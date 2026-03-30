@@ -1,0 +1,10 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Phase 1 sets up Prisma plumbing only.
+// Application models are implemented in Phase 3 per MVP_ROADMAP.md.

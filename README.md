@@ -52,10 +52,32 @@ AI implementation rules are defined separately:
 
 ### Setup
 
-1. Install dependencies with pnpm  
-2. Configure environment variables  
-3. Run database migrations  
-4. Start the application  
+1. Install dependencies:
+
+```bash
+pnpm install
+```
+
+2. Copy `.env.example` to `.env` and configure values, for example:
+
+```bash
+copy .env.example .env
+```
+
+3. Validate Prisma setup:
+
+```bash
+pnpm prisma:format
+pnpm prisma:validate
+```
+
+4. Start the application:
+
+```bash
+pnpm dev
+```
+
+Note: Phase 1 includes Prisma setup only. Data models and migrations are implemented in Phase 3.
 
 ---
 

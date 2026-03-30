@@ -36,6 +36,8 @@ OpsScheduler is a single application with the following components:
 
 - PostgreSQL
 - Accessed via Prisma ORM
+- Prisma CLI configuration defined in `prisma.config.ts`
+- Prisma Client uses PostgreSQL driver adapter (`@prisma/adapter-pg`)
 - Stores:
   - users
   - work items
@@ -131,6 +133,11 @@ Required environment variables include:
 - RESEND_API_KEY
 
 Additional variables may be added as needed.
+
+Prisma configuration notes:
+
+- `DATABASE_URL` is configured in `prisma.config.ts`
+- Prisma schema defines provider and model structure only
 
 Tooling baseline for MVP:
 
@@ -248,6 +255,8 @@ Core dependencies:
 - Dependencies should be reviewed and updated periodically, not automatically
 - Breaking changes must be reviewed before upgrading major versions
 
+---
+
 ## 19. Future Extensions
 
 - Multi-organisation UI support
@@ -255,3 +264,4 @@ Core dependencies:
 - Spreadsheet integration updates
 - Notification system
 - Mobile optimisation
+- framer-motion for subtle UI transitions and interaction polish (introduced in later phases only)
