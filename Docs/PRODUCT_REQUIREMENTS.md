@@ -121,7 +121,7 @@ The intended workflow is:
 - Long rolling sessions
 - Admin and user roles
 - Admin-managed unique user colours
-- User profile settings including display name, timezone, profile picture, and personal calendar visible window
+- User profile settings including display name, timezone, profile picture, personal date format, and personal calendar visible window
 
 ### Audit and Safety
 - Created at and updated at timestamps

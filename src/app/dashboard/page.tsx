@@ -2,12 +2,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SignOutButton } from "@/features/auth/sign-out-button";
-import { BucketPanel } from "@/features/scheduler/bucket-panel";
-import { SchedulerCalendar } from "@/features/scheduler/calendar-view";
+import { SchedulerWorkspace } from "@/features/scheduler/scheduler-workspace";
 import { resolveVisibleWindow } from "@/features/scheduler/visible-window";
+import { normalizeDateLocale } from "@/features/settings/date-locale";
 import {
   addDaysUtc,
   formatIsoDateUtc,
@@ -30,8 +29,12 @@ type CalendarEvent = {
   borderColor?: string;
   end?: string;
   extendedProps?: {
+    cancelled: boolean;
+    customer?: string | null;
     done: boolean;
     fixed: boolean;
+    onHold: boolean;
+    notes?: string | null;
   };
   id: string;
   start: string;
@@ -46,10 +49,6 @@ function combineDateAndTime(dateValue: Date, timeValue: Date): string {
   return `${dateIso}T${hours}:${minutes}:${seconds}`;
 }
 
-function buildDashboardHref(weekIso: string): string {
-  return `/dashboard?week=${weekIso}`;
-}
-
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await getServerAuthSession();
 
@@ -61,7 +60,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const currentWeekStart = startOfWeekMondayUtc(new Date());
   const selectedWeekStart = parseWeekParamToMondayUtc(params.week) ?? currentWeekStart;
   const selectedWeekEnd = addDaysUtc(selectedWeekStart, 6);
-  const weekLabel = formatWeekCommencingLabel(selectedWeekStart);
 
   const currentUser = await prisma.user.findUnique({
     where: {
@@ -70,6 +68,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     select: {
       email: true,
       organizationId: true,
+      dateLocale: true,
       calendarVisibleStartTime: true,
       calendarVisibleEndTime: true,
     },
@@ -78,6 +77,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   if (!currentUser) {
     redirect("/login?callbackUrl=/dashboard");
   }
+  const dateLocale = normalizeDateLocale(currentUser.dateLocale);
+  const weekLabel = formatWeekCommencingLabel(selectedWeekStart, dateLocale);
 
   const [bucketItems, scheduledItems] = await Promise.all([
     prisma.workItem.findMany({
@@ -93,6 +94,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         customer: true,
         done: true,
         fixed: true,
+        onHold: true,
+        cancelled: true,
         assignee: {
           select: {
             colour: true,
@@ -125,11 +128,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         id: true,
         title: true,
         customer: true,
+        notes: true,
         startDate: true,
         endDate: true,
         startTime: true,
         endTime: true,
         fixed: true,
+        onHold: true,
+        cancelled: true,
         done: true,
         assignee: {
           select: {
@@ -146,13 +152,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       continue;
     }
 
-    const eventTitle = item.customer ? `${item.title} - ${item.customer}` : item.title;
     const assigneeColour = item.assignee?.colour;
 
     if (item.startTime) {
       calendarEvents.push({
         id: item.id,
-        title: eventTitle,
+        title: item.title,
         allDay: false,
         start: combineDateAndTime(item.startDate, item.startTime),
         end: item.endTime
@@ -162,7 +167,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         borderColor: assigneeColour ?? undefined,
         extendedProps: {
           fixed: item.fixed,
+          onHold: item.onHold,
+          cancelled: item.cancelled,
           done: item.done,
+          customer: item.customer,
+          notes: item.notes,
         },
       });
       continue;
@@ -170,7 +179,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
     calendarEvents.push({
       id: item.id,
-      title: eventTitle,
+      title: item.title,
       allDay: true,
       start: formatIsoDateUtc(item.startDate),
       end: item.endDate ? formatIsoDateUtc(addDaysUtc(item.endDate, 1)) : undefined,
@@ -178,7 +187,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       borderColor: assigneeColour ?? undefined,
       extendedProps: {
         fixed: item.fixed,
+        onHold: item.onHold,
+        cancelled: item.cancelled,
         done: item.done,
+        customer: item.customer,
+        notes: item.notes,
       },
     });
   }
@@ -188,14 +201,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     currentUser.calendarVisibleEndTime,
   );
 
-  const previousWeekHref = buildDashboardHref(formatIsoDateUtc(addDaysUtc(selectedWeekStart, -7)));
-  const currentWeekHref = buildDashboardHref(formatIsoDateUtc(currentWeekStart));
-  const nextWeekHref = buildDashboardHref(formatIsoDateUtc(addDaysUtc(selectedWeekStart, 7)));
-
   return (
     <main className="min-h-screen">
       <header className="border-b">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">OpsScheduler</p>
@@ -211,15 +220,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               disabled
               className="min-w-[260px] flex-1"
             />
-            <Link href={previousWeekHref} className={buttonVariants({ variant: "outline" })}>
-              Previous week
-            </Link>
-            <Link href={currentWeekHref} className={buttonVariants({ variant: "outline" })}>
-              Current week
-            </Link>
-            <Link href={nextWeekHref} className={buttonVariants({ variant: "outline" })}>
-              Next week
-            </Link>
             <Button type="button" variant="outline" disabled>
               My Items
             </Button>
@@ -234,37 +234,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </header>
 
-      <section className="mx-auto grid w-full max-w-6xl gap-4 p-4 lg:grid-cols-[2fr_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Calendar View</CardTitle>
-            <CardDescription>
-              Scheduled items for the selected week ({calendarEvents.length}).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SchedulerCalendar
-              events={calendarEvents}
-              visibleEndTime={visibleEndTime}
-              visibleStartTime={visibleStartTime}
-              weekStartIso={formatIsoDateUtc(selectedWeekStart)}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Bucket</CardTitle>
-            <CardDescription>Unscheduled items for this target week ({bucketItems.length}).</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <BucketPanel
-              items={bucketItems}
-              targetWeekIso={formatIsoDateUtc(selectedWeekStart)}
-            />
-          </CardContent>
-        </Card>
-      </section>
+      <SchedulerWorkspace
+        bucketItems={bucketItems}
+        calendarEvents={calendarEvents}
+        dateLocale={dateLocale}
+        visibleEndTime={visibleEndTime}
+        visibleStartTime={visibleStartTime}
+        weekStartIso={formatIsoDateUtc(selectedWeekStart)}
+      />
     </main>
   );
 }

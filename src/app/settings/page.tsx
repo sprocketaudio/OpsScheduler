@@ -7,6 +7,7 @@ import {
   resolveVisibleWindow,
 } from "@/features/scheduler/visible-window";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { normalizeDateLocale } from "@/features/settings/date-locale";
 import { CalendarPreferencesForm } from "@/features/settings/calendar-preferences-form";
 import { getServerAuthSession } from "@/server/auth/session";
 import { prisma } from "@/server/db/client";
@@ -23,6 +24,7 @@ export default async function SettingsPage() {
     },
     select: {
       email: true,
+      dateLocale: true,
       calendarVisibleStartTime: true,
       calendarVisibleEndTime: true,
     },
@@ -58,13 +60,14 @@ export default async function SettingsPage() {
       <section className="mx-auto w-full max-w-4xl p-4">
         <Card>
           <CardHeader>
-            <CardTitle>Calendar view window</CardTitle>
+            <CardTitle>Display and calendar preferences</CardTitle>
             <CardDescription>
-              Set your personal visible day range in the weekly calendar.
+              Set your personal date format and visible day range in the weekly calendar.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <CalendarPreferencesForm
+              initialDateLocale={normalizeDateLocale(currentUser.dateLocale)}
               initialVisibleStartTime={convertIsoTimeToInputValue(visibleStartTime)}
               initialVisibleEndTime={convertIsoTimeToInputValue(visibleEndTime)}
             />

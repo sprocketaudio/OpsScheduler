@@ -25,9 +25,6 @@ The main screen consists of three primary areas:
 The top bar must include:
 
 - Current week display (e.g. "Week commencing 16 Jun 2026")
-- Previous week button
-- Next week button
-- "Today" or "Current Week" button
 - Search input
 - Filter toggles:
   - My Items
@@ -38,6 +35,7 @@ The top bar must include:
 
 Profile/Settings must include:
 
+- User-level date format (locale) control
 - User-level calendar visible window controls (start and end time)
 
 ---
@@ -62,6 +60,9 @@ Profile/Settings must include:
 - Time grid supports:
   - timed items
   - drag and resize
+  - overlapping timed items rendered side-by-side (non-overlapping visual mode)
+  - overlap stack capped to a small maximum with "+more" overflow indicator
+  - hover tooltip showing schedule, title, notes (when present), and status
 
 ---
 
@@ -81,6 +82,8 @@ Profile/Settings must include:
 - Items can be dragged into calendar
 - Items remain until scheduled or deleted
 - Items automatically carry forward to next week
+- Bucket panel helper text should state that unscheduled items carry over each week
+- The bucket drop zone must stretch to the bottom of the bucket panel so drop targeting remains large even with few items
 
 ---
 
@@ -94,13 +97,26 @@ Each item must display:
   - colour (background or border)
   - optional initials/avatar
 - Fixed indicator (visual highlight, e.g. red)
-- Done indicator (faded or marked)
+- On hold indicator (visual highlight, e.g. brown)
+- Cancelled indicator (visual highlight, e.g. gray)
+- Complete indicator (visual status)
 
 ### Visual Rules
 
 - Colour always represents assignee
 - Fixed must be visually distinct (e.g. red border or fill)
-- Done must appear faded or muted but still readable
+- Complete must be visually distinct and still readable
+- Timed items should use a compact two-line text block when customer is present:
+  - line 1 = title (start of text visible)
+  - line 2 = customer (start of text visible)
+- Compact text should remain top-aligned within the event body without touching the border
+- Calendar and bucket item status must use outline colour only (no status badges)
+- Fixed uses a red outline
+- On hold uses a brown outline
+- Cancelled uses a gray outline
+- Complete uses a green outline
+- Outline priority is: Complete > Cancelled > On hold > Fixed
+- Cancelled and On hold should render with reduced opacity to communicate inactive state
 
 ---
 
@@ -127,7 +143,9 @@ Opening an item displays a panel (side or modal) with:
 - Start date/time with optional end date/time (editable schedule range)
 - Assignee (select user)
 - Fixed toggle
-- Done toggle
+- On hold toggle
+- Cancelled toggle
+- Complete toggle
 
 Planned additions in later phases:
 
@@ -135,8 +153,10 @@ Planned additions in later phases:
 
 ### Behaviour
 
-- Changes save immediately or via explicit save
+- Changes autosave after edits (no explicit save button required)
 - Panel can be closed without navigation
+- Side detail panel is non-modal: the main UI remains visible and interactive while the panel is open
+- Selecting another item by click or drag updates the open panel to that item
 
 ---
 
@@ -201,7 +221,7 @@ Planned additions in later phases:
 
 ---
 
-## 12. Fixed and Done
+## 12. Status Flags
 
 ### Fixed
 
@@ -209,11 +229,26 @@ Planned additions in later phases:
 - Visual indicator (e.g. red)
 - Does not block movement
 
-### Done
+### On Hold
+
+- Toggle in detail panel
+- Visual indicator (brown outline)
+- Does not block movement
+
+### Cancelled
+
+- Toggle in detail panel
+- Visual indicator (gray outline)
+- Does not block movement
+
+### Complete
 
 - Toggle in detail panel
 - Item remains visible
-- Item appears faded or marked
+- Item appears with complete status styling
+- Complete visual state overrides Cancelled, On hold, and Fixed visual states
+- Cancelled visual state overrides On hold and Fixed visual states
+- On hold visual state overrides Fixed visual state
 
 ---
 
@@ -253,9 +288,11 @@ Planned additions in later phases:
 
 ## 15. Week Navigation
 
-- Previous and next week navigation
-- Current week shortcut
+- Previous and next week controls in the calendar panel (top right)
+- Current week shortcut in the calendar panel
+- Date picker jump control in the calendar panel to select any date and navigate to that week
 - Calendar and bucket update together
+- Week/day labels and scheduler tooltip dates use the signed-in user's selected date locale
 
 ---
 
@@ -294,7 +331,7 @@ The UI must feel modern, clean, and responsive without becoming decorative or he
 
 - Assignee colour is functional and must remain clearly visible
 - Fixed items must be visually distinct from normal items
-- Done items must remain visible but appear subdued
+- Complete items must remain visible and clearly marked
 - Base UI colours must remain neutral so assignee colours stand out
 - Avoid high saturation, noisy backgrounds, or decorative gradients
 

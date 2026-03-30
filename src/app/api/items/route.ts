@@ -277,6 +277,8 @@ export async function POST(request: NextRequest) {
       startTime: placement.startTime,
       endTime: placement.endTime,
       fixed: false,
+      onHold: false,
+      cancelled: false,
       done: false,
       createdById: currentUser.id,
       updatedById: currentUser.id,

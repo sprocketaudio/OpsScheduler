@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 type ItemDetailResponse = {
   item: {
     assigneeId: string | null;
+    cancelled: boolean;
     customer: string | null;
     done: boolean;
     endDate: string | null;
@@ -15,6 +16,7 @@ type ItemDetailResponse = {
     fixed: boolean;
     id: string;
     notes: string | null;
+    onHold: boolean;
     startDate: string | null;
     startTime: string | null;
     targetWeek: string;
@@ -31,9 +33,132 @@ type ItemDetailResponse = {
 type ItemDetailPanelProps = {
   itemId: string | null;
   onClose: () => void;
+  onStatusSync?: (payload: {
+    cancelled: boolean;
+    done: boolean;
+    fixed: boolean;
+    itemId: string;
+    onHold: boolean;
+  }) => void;
+  refreshToken?: number;
+  scheduleSync?: {
+    endDate: string;
+    endTime: string;
+    itemId: string;
+    seq: number;
+    startDate: string;
+    startTime: string;
+  } | null;
 };
 
-export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
+type ItemDraft = {
+  assigneeId: string;
+  customer: string;
+  endDate: string;
+  endTime: string;
+  isCancelled: boolean;
+  isDone: boolean;
+  isFixed: boolean;
+  isOnHold: boolean;
+  notes: string;
+  startDate: string;
+  startTime: string;
+  title: string;
+};
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+function formatTimeInputValue(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+  return value.slice(0, 5);
+}
+
+function formatTimeApiValue(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (trimmed.length === 5) {
+    return `${trimmed}:00`;
+  }
+
+  return trimmed;
+}
+
+function deriveWeekMondayIso(dateIso: string): string {
+  const [yearPart, monthPart, dayPart] = dateIso.split("-");
+  const year = Number.parseInt(yearPart ?? "", 10);
+  const month = Number.parseInt(monthPart ?? "", 10);
+  const day = Number.parseInt(dayPart ?? "", 10);
+
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  const weekday = utcDate.getUTCDay();
+  const daysSinceMonday = (weekday + 6) % 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() - daysSinceMonday);
+
+  const mondayYear = utcDate.getUTCFullYear();
+  const mondayMonth = String(utcDate.getUTCMonth() + 1).padStart(2, "0");
+  const mondayDay = String(utcDate.getUTCDate()).padStart(2, "0");
+  return `${mondayYear}-${mondayMonth}-${mondayDay}`;
+}
+
+function areDraftsEqual(left: ItemDraft, right: ItemDraft): boolean {
+  return (
+    left.title === right.title &&
+    left.customer === right.customer &&
+    left.notes === right.notes &&
+    left.assigneeId === right.assigneeId &&
+    left.isFixed === right.isFixed &&
+    left.isOnHold === right.isOnHold &&
+    left.isCancelled === right.isCancelled &&
+    left.isDone === right.isDone &&
+    left.startDate === right.startDate &&
+    left.startTime === right.startTime &&
+    left.endDate === right.endDate &&
+    left.endTime === right.endTime
+  );
+}
+
+function validateDraft(draft: ItemDraft): string | null {
+  const normalizedTitle = draft.title.trim();
+  if (!normalizedTitle) {
+    return "Title is required.";
+  }
+
+  const normalizedStartDate = draft.startDate.trim();
+  const normalizedEndDate = draft.endDate.trim();
+  const normalizedStartTime = draft.startTime.trim();
+  const normalizedEndTime = draft.endTime.trim();
+
+  if (normalizedEndDate && !normalizedStartDate) {
+    return "End date requires a start date.";
+  }
+
+  if (normalizedEndTime && !normalizedStartTime) {
+    return "End time requires a start time.";
+  }
+
+  if (normalizedStartTime && normalizedEndDate && !normalizedEndTime) {
+    return "Timed items with an end date require an end time.";
+  }
+
+  if (normalizedStartDate && normalizedEndDate && normalizedEndDate < normalizedStartDate) {
+    return "End date cannot be earlier than start date.";
+  }
+
+  return null;
+}
+
+export function ItemDetailPanel({
+  itemId,
+  onClose,
+  onStatusSync,
+  refreshToken = 0,
+  scheduleSync = null,
+}: ItemDetailPanelProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -42,6 +167,8 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
   const [notes, setNotes] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [isFixed, setIsFixed] = useState(false);
+  const [isOnHold, setIsOnHold] = useState(false);
+  const [isCancelled, setIsCancelled] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -49,6 +176,42 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
   const [endTime, setEndTime] = useState("");
   const [assignableUsers, setAssignableUsers] = useState<ItemDetailResponse["assignableUsers"]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [lastSavedDraft, setLastSavedDraft] = useState<ItemDraft | null>(null);
+  const activeItemIdRef = useRef<string | null>(itemId);
+  const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveSequenceRef = useRef(0);
+
+  const currentDraft: ItemDraft = useMemo(
+    () => ({
+      title,
+      customer,
+      notes,
+      assigneeId,
+      isFixed,
+      isOnHold,
+      isCancelled,
+      isDone,
+      startDate,
+      startTime,
+      endDate,
+      endTime,
+    }),
+    [
+      title,
+      customer,
+      notes,
+      assigneeId,
+      isFixed,
+      isOnHold,
+      isCancelled,
+      isDone,
+      startDate,
+      startTime,
+      endDate,
+      endTime,
+    ],
+  );
 
   function handleStartDateChange(value: string) {
     setStartDate(value);
@@ -66,56 +229,224 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
     }
   }
 
-  function formatTimeInputValue(value: string | null): string {
-    if (!value) {
-      return "";
-    }
-    return value.slice(0, 5);
-  }
+  const persistDraft = useCallback(
+    async (draft: ItemDraft) => {
+      const activeItemId = itemId;
+      if (!activeItemId) {
+        return;
+      }
 
-  function formatTimeApiValue(value: string): string | undefined {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return undefined;
-    }
+      const validationError = validateDraft(draft);
+      if (validationError) {
+        if (activeItemIdRef.current === activeItemId) {
+          setErrorMessage(validationError);
+          setSaveStatus("error");
+        }
+        return;
+      }
 
-    if (trimmed.length === 5) {
-      return `${trimmed}:00`;
-    }
+      const sequence = ++saveSequenceRef.current;
+      if (activeItemIdRef.current === activeItemId) {
+        setIsSaving(true);
+        setSaveStatus("saving");
+        setErrorMessage(null);
+      }
 
-    return trimmed;
-  }
+      const normalizedTitle = draft.title.trim();
+      const normalizedStartDate = draft.startDate.trim();
+      const normalizedEndDate = draft.endDate.trim();
+      const normalizedStartTime = draft.startTime.trim();
+      const normalizedEndTime = draft.endTime.trim();
 
-  function deriveWeekMondayIso(dateIso: string): string {
-    const [yearPart, monthPart, dayPart] = dateIso.split("-");
-    const year = Number.parseInt(yearPart ?? "", 10);
-    const month = Number.parseInt(monthPart ?? "", 10);
-    const day = Number.parseInt(dayPart ?? "", 10);
+      try {
+        const placementResponse = await fetch(`/api/items/${activeItemId}/placement`, {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(
+            normalizedStartDate
+              ? {
+                  placement: {
+                    kind: "calendar",
+                    startDate: normalizedStartDate,
+                    startTime: formatTimeApiValue(normalizedStartTime),
+                    endDate: normalizedEndDate || undefined,
+                    endTime: formatTimeApiValue(normalizedEndTime),
+                    targetWeek: deriveWeekMondayIso(normalizedStartDate),
+                  },
+                }
+              : {
+                  placement: {
+                    kind: "bucket",
+                  },
+                },
+          ),
+        });
 
-    const utcDate = new Date(Date.UTC(year, month - 1, day));
-    const weekday = utcDate.getUTCDay();
-    const daysSinceMonday = (weekday + 6) % 7;
-    utcDate.setUTCDate(utcDate.getUTCDate() - daysSinceMonday);
+        if (!placementResponse.ok) {
+          let error = "Unable to autosave item placement right now.";
+          try {
+            const payload = (await placementResponse.json()) as { error?: string };
+            if (payload.error) {
+              error = payload.error;
+            }
+          } catch {
+            // Keep generic message.
+          }
 
-    const mondayYear = utcDate.getUTCFullYear();
-    const mondayMonth = String(utcDate.getUTCMonth() + 1).padStart(2, "0");
-    const mondayDay = String(utcDate.getUTCDate()).padStart(2, "0");
-    return `${mondayYear}-${mondayMonth}-${mondayDay}`;
-  }
+          if (activeItemIdRef.current === activeItemId && sequence === saveSequenceRef.current) {
+            setErrorMessage(error);
+            setSaveStatus("error");
+          }
+          return;
+        }
+
+        const response = await fetch(`/api/items/${activeItemId}`, {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            title: normalizedTitle,
+            customer: draft.customer.trim(),
+            notes: draft.notes.trim(),
+            assigneeId: draft.assigneeId || null,
+            fixed: draft.isFixed,
+            onHold: draft.isOnHold,
+            cancelled: draft.isCancelled,
+            done: draft.isDone,
+          }),
+        });
+
+        if (!response.ok) {
+          let error = "Unable to autosave item right now.";
+          try {
+            const payload = (await response.json()) as { error?: string };
+            if (payload.error) {
+              error = payload.error;
+            }
+          } catch {
+            // Keep generic message.
+          }
+
+          if (activeItemIdRef.current === activeItemId && sequence === saveSequenceRef.current) {
+            setErrorMessage(error);
+            setSaveStatus("error");
+          }
+          return;
+        }
+
+        if (activeItemIdRef.current === activeItemId && sequence === saveSequenceRef.current) {
+          onStatusSync?.({
+            itemId: activeItemId,
+            fixed: draft.isFixed,
+            onHold: draft.isOnHold,
+            cancelled: draft.isCancelled,
+            done: draft.isDone,
+          });
+          setLastSavedDraft(draft);
+          setSaveStatus("saved");
+          setErrorMessage(null);
+          router.refresh();
+        }
+      } catch {
+        if (activeItemIdRef.current === activeItemId && sequence === saveSequenceRef.current) {
+          setErrorMessage("Unable to autosave item right now.");
+          setSaveStatus("error");
+        }
+      } finally {
+        if (activeItemIdRef.current === activeItemId && sequence === saveSequenceRef.current) {
+          setIsSaving(false);
+        }
+      }
+    },
+    [itemId, onStatusSync, router],
+  );
 
   useEffect(() => {
-    if (!itemId) {
+    activeItemIdRef.current = itemId;
+  }, [itemId, refreshToken]);
+
+  useEffect(() => {
+    if (!itemId || !scheduleSync || scheduleSync.itemId !== itemId) {
       return;
     }
 
-    let isCancelled = false;
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+      autosaveTimeoutRef.current = null;
+    }
+
+    setStartDate(scheduleSync.startDate);
+    setStartTime(scheduleSync.startTime);
+    setEndDate(scheduleSync.endDate);
+    setEndTime(scheduleSync.endTime);
+
+    setLastSavedDraft((previous) => {
+      const baseline = previous ?? {
+        title,
+        customer,
+        notes,
+        assigneeId,
+        isFixed,
+        isOnHold,
+        isCancelled,
+        isDone,
+        startDate,
+        startTime,
+        endDate,
+        endTime,
+      };
+
+      return {
+        ...baseline,
+        startDate: scheduleSync.startDate,
+        startTime: scheduleSync.startTime,
+        endDate: scheduleSync.endDate,
+        endTime: scheduleSync.endTime,
+      };
+    });
+    setSaveStatus("saved");
+    setErrorMessage(null);
+  }, [
+    itemId,
+    scheduleSync,
+    title,
+    customer,
+    notes,
+    assigneeId,
+    isFixed,
+    isOnHold,
+    isCancelled,
+    isDone,
+    startDate,
+    startTime,
+    endDate,
+    endTime,
+  ]);
+
+  useEffect(() => {
+    if (!itemId) {
+      setIsLoading(false);
+      setIsSaving(false);
+      setSaveStatus("idle");
+      setErrorMessage(null);
+      setLastSavedDraft(null);
+      return;
+    }
+
+    let requestCancelled = false;
 
     async function loadItem() {
       setIsLoading(true);
       setErrorMessage(null);
+      setSaveStatus("idle");
 
       try {
-        const response = await fetch(`/api/items/${itemId}`);
+        const response = await fetch(`/api/items/${itemId}?refresh=${refreshToken}`, {
+          cache: "no-store",
+        });
         if (!response.ok) {
           let error = "Unable to load item details.";
           try {
@@ -127,32 +458,53 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
             // Keep generic message.
           }
 
-          if (!isCancelled) {
+          if (!requestCancelled) {
             setErrorMessage(error);
+            setSaveStatus("error");
           }
           return;
         }
 
         const payload = (await response.json()) as ItemDetailResponse;
-        if (!isCancelled) {
-          setTitle(payload.item.title);
-          setCustomer(payload.item.customer ?? "");
-          setNotes(payload.item.notes ?? "");
-          setAssigneeId(payload.item.assigneeId ?? "");
-          setIsFixed(payload.item.fixed);
-          setIsDone(payload.item.done);
-          setStartDate(payload.item.startDate ?? "");
-          setStartTime(formatTimeInputValue(payload.item.startTime));
-          setEndDate(payload.item.endDate ?? "");
-          setEndTime(formatTimeInputValue(payload.item.endTime));
+        if (!requestCancelled) {
+          const loadedDraft: ItemDraft = {
+            title: payload.item.title,
+            customer: payload.item.customer ?? "",
+            notes: payload.item.notes ?? "",
+            assigneeId: payload.item.assigneeId ?? "",
+            isFixed: payload.item.fixed,
+            isOnHold: payload.item.onHold,
+            isCancelled: payload.item.cancelled,
+            isDone: payload.item.done,
+            startDate: payload.item.startDate ?? "",
+            startTime: formatTimeInputValue(payload.item.startTime),
+            endDate: payload.item.endDate ?? "",
+            endTime: formatTimeInputValue(payload.item.endTime),
+          };
+
+          setTitle(loadedDraft.title);
+          setCustomer(loadedDraft.customer);
+          setNotes(loadedDraft.notes);
+          setAssigneeId(loadedDraft.assigneeId);
+          setIsFixed(loadedDraft.isFixed);
+          setIsOnHold(loadedDraft.isOnHold);
+          setIsCancelled(loadedDraft.isCancelled);
+          setIsDone(loadedDraft.isDone);
+          setStartDate(loadedDraft.startDate);
+          setStartTime(loadedDraft.startTime);
+          setEndDate(loadedDraft.endDate);
+          setEndTime(loadedDraft.endTime);
+          setLastSavedDraft(loadedDraft);
           setAssignableUsers(payload.assignableUsers);
+          setSaveStatus("idle");
         }
       } catch {
-        if (!isCancelled) {
+        if (!requestCancelled) {
           setErrorMessage("Unable to load item details.");
+          setSaveStatus("error");
         }
       } finally {
-        if (!isCancelled) {
+        if (!requestCancelled) {
           setIsLoading(false);
         }
       }
@@ -161,131 +513,66 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
     void loadItem();
 
     return () => {
-      isCancelled = true;
+      requestCancelled = true;
     };
-  }, [itemId]);
+  }, [itemId, refreshToken]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!itemId) {
+  useEffect(() => {
+    if (!itemId || isLoading || !lastSavedDraft) {
       return;
     }
 
-    const normalizedTitle = title.trim();
-    if (!normalizedTitle) {
-      setErrorMessage("Title is required.");
+    if (areDraftsEqual(currentDraft, lastSavedDraft)) {
       return;
     }
 
-    const normalizedStartDate = startDate.trim();
-    const normalizedEndDate = endDate.trim();
-    const normalizedStartTime = startTime.trim();
-    const normalizedEndTime = endTime.trim();
-
-    if (normalizedEndDate && !normalizedStartDate) {
-      setErrorMessage("End date requires a start date.");
+    const validationError = validateDraft(currentDraft);
+    if (validationError) {
+      setErrorMessage(validationError);
+      setSaveStatus("error");
       return;
     }
 
-    if (normalizedEndTime && !normalizedStartTime) {
-      setErrorMessage("End time requires a start time.");
-      return;
-    }
-
-    if (normalizedStartTime && normalizedEndDate && !normalizedEndTime) {
-      setErrorMessage("Timed items with an end date require an end time.");
-      return;
-    }
-
-    if (normalizedStartDate && normalizedEndDate && normalizedEndDate < normalizedStartDate) {
-      setErrorMessage("End date cannot be earlier than start date.");
-      return;
-    }
-
-    setIsSaving(true);
     setErrorMessage(null);
 
-    try {
-      const placementResponse = await fetch(`/api/items/${itemId}/placement`, {
-        method: "PATCH",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(
-          normalizedStartDate
-            ? {
-                placement: {
-                  kind: "calendar",
-                  startDate: normalizedStartDate,
-                  startTime: formatTimeApiValue(normalizedStartTime),
-                  endDate: normalizedEndDate || undefined,
-                  endTime: formatTimeApiValue(normalizedEndTime),
-                  targetWeek: deriveWeekMondayIso(normalizedStartDate),
-                },
-              }
-            : {
-                placement: {
-                  kind: "bucket",
-                },
-              },
-        ),
-      });
-
-      if (!placementResponse.ok) {
-        let error = "Unable to save item placement right now.";
-        try {
-          const payload = (await placementResponse.json()) as { error?: string };
-          if (payload.error) {
-            error = payload.error;
-          }
-        } catch {
-          // Keep generic message.
-        }
-
-        setErrorMessage(error);
-        return;
-      }
-
-      const response = await fetch(`/api/items/${itemId}`, {
-        method: "PATCH",
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          title: normalizedTitle,
-          customer: customer.trim(),
-          notes: notes.trim(),
-          assigneeId: assigneeId || null,
-          fixed: isFixed,
-          done: isDone,
-        }),
-      });
-
-      if (!response.ok) {
-        let error = "Unable to save item right now.";
-        try {
-          const payload = (await response.json()) as { error?: string };
-          if (payload.error) {
-            error = payload.error;
-          }
-        } catch {
-          // Keep generic message.
-        }
-
-        setErrorMessage(error);
-        return;
-      }
-
-      onClose();
-      router.refresh();
-      return;
-    } catch {
-      setErrorMessage("Unable to save item right now.");
-      return;
-    } finally {
-      setIsSaving(false);
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+      autosaveTimeoutRef.current = null;
     }
-  }
+
+    autosaveTimeoutRef.current = setTimeout(() => {
+      void persistDraft(currentDraft);
+    }, 600);
+
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        clearTimeout(autosaveTimeoutRef.current);
+        autosaveTimeoutRef.current = null;
+      }
+    };
+  }, [
+    itemId,
+    isLoading,
+    lastSavedDraft,
+    currentDraft,
+    persistDraft,
+  ]);
+
+  const hasUnsavedChanges =
+    !!lastSavedDraft &&
+    !areDraftsEqual(currentDraft, lastSavedDraft);
+  const effectiveEndDate = startDate ? endDate || startDate : "";
+  const statusLabel = isLoading
+    ? "Loading..."
+    : isSaving
+      ? "Saving..."
+      : saveStatus === "error"
+        ? "Autosave paused"
+        : hasUnsavedChanges
+          ? "Unsaved changes"
+          : saveStatus === "saved"
+            ? "Saved"
+            : "All changes saved";
 
   if (!itemId) {
     return null;
@@ -293,17 +580,15 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/30"
+      className="pointer-events-none fixed inset-y-0 right-0 z-50 flex w-full justify-end"
       role="dialog"
-      aria-modal="true"
+      aria-modal={false}
       aria-label="Item detail panel"
-      onClick={onClose}
     >
       <aside
-        className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l bg-background p-4 shadow-xl"
-        onClick={(event) => event.stopPropagation()}
+        className="pointer-events-auto h-full w-full max-w-md overflow-y-auto border-l bg-background p-4 shadow-xl"
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Item details</h2>
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
             Close
@@ -313,7 +598,7 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading item...</p>
         ) : (
-          <form className="grid gap-3" onSubmit={handleSubmit}>
+          <div className="grid gap-3">
             <div className="grid gap-1.5">
               <label htmlFor="item-title" className="text-sm font-medium">
                 Title
@@ -323,7 +608,7 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 maxLength={200}
-                disabled={isSaving}
+                disabled={isLoading}
                 required
               />
             </div>
@@ -337,7 +622,7 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                 value={customer}
                 onChange={(event) => setCustomer(event.target.value)}
                 maxLength={200}
-                disabled={isSaving}
+                disabled={isLoading}
               />
             </div>
 
@@ -351,13 +636,12 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                 onChange={(event) => setNotes(event.target.value)}
                 maxLength={4000}
                 rows={8}
-                disabled={isSaving}
+                disabled={isLoading}
                 className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
             <div className="grid gap-1.5 rounded-md border p-3">
-              <p className="text-sm font-medium">Assignment and status</p>
               <div className="grid gap-2">
                 <label htmlFor="item-assignee" className="text-sm font-medium">
                   Assignee
@@ -366,7 +650,7 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                   id="item-assignee"
                   value={assigneeId}
                   onChange={(event) => setAssigneeId(event.target.value)}
-                  disabled={isSaving}
+                  disabled={isLoading}
                   className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Unassigned</option>
@@ -376,27 +660,6 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div className="mt-1 flex flex-wrap items-center gap-4">
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={isFixed}
-                    onChange={(event) => setIsFixed(event.target.checked)}
-                    disabled={isSaving}
-                  />
-                  Fixed
-                </label>
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={isDone}
-                    onChange={(event) => setIsDone(event.target.checked)}
-                    disabled={isSaving}
-                  />
-                  Done
-                </label>
               </div>
             </div>
 
@@ -415,7 +678,7 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                     type="date"
                     value={startDate}
                     onChange={(event) => handleStartDateChange(event.target.value)}
-                    disabled={isSaving}
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="grid gap-1.5">
@@ -428,7 +691,7 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                     step={900}
                     value={startTime}
                     onChange={(event) => handleStartTimeChange(event.target.value)}
-                    disabled={isSaving || !startDate}
+                    disabled={isLoading || !startDate}
                   />
                 </div>
                 <div className="grid gap-1.5">
@@ -438,9 +701,16 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                   <Input
                     id="item-end-date"
                     type="date"
-                    value={endDate}
-                    onChange={(event) => setEndDate(event.target.value)}
-                    disabled={isSaving || !startDate}
+                    value={effectiveEndDate}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      if (!startDate || !nextValue || nextValue === startDate) {
+                        setEndDate("");
+                        return;
+                      }
+                      setEndDate(nextValue);
+                    }}
+                    disabled={isLoading || !startDate}
                   />
                 </div>
                 <div className="grid gap-1.5">
@@ -453,21 +723,56 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                     step={900}
                     value={endTime}
                     onChange={(event) => setEndTime(event.target.value)}
-                    disabled={isSaving || !startDate || !startTime}
+                    disabled={isLoading || !startDate || !startTime}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save changes"}
-              </Button>
-              <Button type="button" variant="outline" disabled={isSaving} onClick={onClose}>
-                Cancel
-              </Button>
+            <div className="grid gap-2 rounded-md border p-3">
+              <p className="text-sm font-medium">Status</p>
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isFixed}
+                    onChange={(event) => setIsFixed(event.target.checked)}
+                    disabled={isLoading}
+                  />
+                  Fixed
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isOnHold}
+                    onChange={(event) => setIsOnHold(event.target.checked)}
+                    disabled={isLoading}
+                  />
+                  On hold
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isCancelled}
+                    onChange={(event) => setIsCancelled(event.target.checked)}
+                    disabled={isLoading}
+                  />
+                  Cancelled
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isDone}
+                    onChange={(event) => setIsDone(event.target.checked)}
+                    disabled={isLoading}
+                  />
+                  Complete
+                </label>
+              </div>
             </div>
-          </form>
+
+            <p className="text-right text-xs text-muted-foreground">{statusLabel}</p>
+          </div>
         )}
 
         {errorMessage ? <p className="mt-3 text-sm text-destructive">{errorMessage}</p> : null}

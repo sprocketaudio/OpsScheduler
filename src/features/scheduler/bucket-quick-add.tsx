@@ -79,7 +79,7 @@ export function BucketQuickAdd({ targetWeekIso }: BucketQuickAddProps) {
   if (!isEditing) {
     return (
       <Button type="button" variant="outline" onClick={() => setIsEditing(true)}>
-        Quick add in bucket
+        Add
       </Button>
     );
   }

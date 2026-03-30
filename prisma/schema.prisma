@@ -26,6 +26,7 @@ model User {
   email                    String       @unique
   emailVerified            DateTime?
   image                    String?      @map("profile_image_url")
+  dateLocale               String       @default("en-GB") @map("date_locale") @db.VarChar(10)
   timezone                 String?
   calendarVisibleStartTime String       @default("08:00:00") @map("calendar_visible_start_time") @db.VarChar(8)
   calendarVisibleEndTime   String       @default("20:00:00") @map("calendar_visible_end_time") @db.VarChar(8)
@@ -79,6 +80,8 @@ model WorkItem {
   startTime      DateTime?    @map("start_time") @db.Time(6)
   endTime        DateTime?    @map("end_time") @db.Time(6)
   fixed          Boolean      @default(false)
+  onHold         Boolean      @default(false) @map("on_hold")
+  cancelled      Boolean      @default(false)
   done           Boolean      @default(false)
   createdById    String       @map("created_by")
   createdBy      User         @relation("WorkItemCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
@@ -92,6 +95,8 @@ model WorkItem {
   @@index([startDate])
   @@index([assigneeId])
   @@index([done])
+  @@index([cancelled])
+  @@index([onHold])
   @@index([fixed])
 }
 

@@ -1,3 +1,5 @@
+import { DEFAULT_DATE_LOCALE, type DateLocale } from "@/features/settings/date-locale";
+
 const ISO_WEEK_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function startOfWeekMondayUtc(referenceDate: Date): Date {
@@ -23,8 +25,11 @@ export function formatIsoDateUtc(value: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function formatWeekCommencingLabel(weekStart: Date): string {
-  return new Intl.DateTimeFormat("en-GB", {
+export function formatWeekCommencingLabel(
+  weekStart: Date,
+  dateLocale: DateLocale = DEFAULT_DATE_LOCALE,
+): string {
+  return new Intl.DateTimeFormat(dateLocale, {
     day: "2-digit",
     month: "short",
     year: "numeric",

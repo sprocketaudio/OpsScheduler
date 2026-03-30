@@ -4,17 +4,21 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DATE_LOCALE_VALUES, type DateLocale } from "@/features/settings/date-locale";
 
 type CalendarPreferencesFormProps = {
+  initialDateLocale: DateLocale;
   initialVisibleEndTime: string;
   initialVisibleStartTime: string;
 };
 
 export function CalendarPreferencesForm({
+  initialDateLocale,
   initialVisibleEndTime,
   initialVisibleStartTime,
 }: CalendarPreferencesFormProps) {
   const router = useRouter();
+  const [dateLocale, setDateLocale] = useState<DateLocale>(initialDateLocale);
   const [visibleStartTime, setVisibleStartTime] = useState(initialVisibleStartTime);
   const [visibleEndTime, setVisibleEndTime] = useState(initialVisibleEndTime);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,6 +39,7 @@ export function CalendarPreferencesForm({
           "content-type": "application/json",
         },
         body: JSON.stringify({
+          dateLocale,
           calendarVisibleStartTime: visibleStartTime,
           calendarVisibleEndTime: visibleEndTime,
         }),
@@ -55,7 +60,7 @@ export function CalendarPreferencesForm({
         return;
       }
 
-      setSuccessMessage("Calendar view settings saved.");
+      setSuccessMessage("Profile settings saved.");
       router.refresh();
       return;
     } catch {
@@ -68,6 +73,25 @@ export function CalendarPreferencesForm({
 
   return (
     <form className="grid gap-4" onSubmit={handleSubmit}>
+      <div className="grid gap-1.5 sm:max-w-xs">
+        <label htmlFor="date-locale" className="text-sm font-medium">
+          Date format
+        </label>
+        <select
+          id="date-locale"
+          value={dateLocale}
+          onChange={(event) => setDateLocale(event.target.value as DateLocale)}
+          disabled={isSubmitting}
+          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {DATE_LOCALE_VALUES.map((locale) => (
+            <option key={locale} value={locale}>
+              {locale === "en-GB" ? "UK (DD/MM/YYYY)" : "US (MM/DD/YYYY)"}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <label htmlFor="visible-start-time" className="text-sm font-medium">

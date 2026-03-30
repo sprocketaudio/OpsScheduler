@@ -10,6 +10,8 @@ const updateItemRequestSchema = z
     notes: z.string().trim().max(4000, "Notes must be 4000 characters or fewer").nullable().optional(),
     assigneeId: z.string().trim().min(1, "assigneeId cannot be empty").nullable().optional(),
     fixed: z.boolean().optional(),
+    onHold: z.boolean().optional(),
+    cancelled: z.boolean().optional(),
     done: z.boolean().optional(),
   })
   .strict();
@@ -114,6 +116,8 @@ export async function GET(
       endTime: true,
       assigneeId: true,
       fixed: true,
+      onHold: true,
+      cancelled: true,
       done: true,
     },
   });
@@ -157,6 +161,8 @@ export async function GET(
         endTime: item.endTime ? formatIsoTimeUtc(item.endTime) : null,
         assigneeId: item.assigneeId,
         fixed: item.fixed,
+        onHold: item.onHold,
+        cancelled: item.cancelled,
         done: item.done,
       },
       assignableUsers,
@@ -293,6 +299,8 @@ export async function PATCH(
   }
 
   const fixed = parsedRequest.data.fixed ?? undefined;
+  const onHold = parsedRequest.data.onHold ?? undefined;
+  const cancelled = parsedRequest.data.cancelled ?? undefined;
   const done = parsedRequest.data.done ?? undefined;
 
   const updatedItem = await prisma.workItem.update({
@@ -308,6 +316,8 @@ export async function PATCH(
           ? undefined
           : assigneeId ?? null,
       fixed,
+      onHold,
+      cancelled,
       done,
       updatedById: currentUser.id,
     },
@@ -323,6 +333,8 @@ export async function PATCH(
       endTime: true,
       assigneeId: true,
       fixed: true,
+      onHold: true,
+      cancelled: true,
       done: true,
     },
   });
@@ -341,6 +353,8 @@ export async function PATCH(
         endTime: updatedItem.endTime ? formatIsoTimeUtc(updatedItem.endTime) : null,
         assigneeId: updatedItem.assigneeId,
         fixed: updatedItem.fixed,
+        onHold: updatedItem.onHold,
+        cancelled: updatedItem.cancelled,
         done: updatedItem.done,
       },
     },

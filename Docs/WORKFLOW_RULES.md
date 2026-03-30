@@ -17,7 +17,9 @@ A unit of work that can be:
 - unscheduled (in bucket)
 - scheduled (placed on calendar)
 - marked as Fixed
-- marked as Done
+- marked as On hold
+- marked as Cancelled
+- marked as Complete
 
 ### Bucket
 A weekly holding area for unscheduled work items.
@@ -44,7 +46,7 @@ A work item can exist in the following states:
 - May optionally have time assigned
 - Appears in the calendar
 
-### Done State
+### Complete State
 - Item is marked as complete
 - Item remains visible
 - Item is not removed or hidden
@@ -109,23 +111,57 @@ Fixed means the item has a committed or pre-arranged time.
 - Fixed items are visually distinct
 - Fixed items can still be moved if necessary
 - Fixed status does not prevent drag or edit
+- Fixed uses red outline styling
 
 ---
 
-## 8. Done State Rules
+## 8. On Hold State Rules
 
 ### Definition
-Done indicates the work has been completed.
+On hold indicates work is paused.
 
 ### Behaviour
-- Done items remain visible in their current location
-- Done items are visually distinct
-- Done does not move or hide the item
-- Done can be toggled on and off
+- On hold items remain visible
+- On hold items are visually distinct
+- On hold does not move or hide the item
+- On hold can be toggled on and off
+- On hold uses brown outline styling
+- When both Fixed and On hold are set, On hold visual styling takes priority
 
 ---
 
-## 9. Assignment Rules
+## 9. Cancelled State Rules
+
+### Definition
+Cancelled indicates work is no longer proceeding.
+
+### Behaviour
+- Cancelled items remain visible
+- Cancelled items are visually distinct
+- Cancelled does not move or hide the item
+- Cancelled can be toggled on and off
+- Cancelled uses gray outline styling
+- When Cancelled and On hold are both set, Cancelled visual styling takes priority
+- When Cancelled and Fixed are both set, Cancelled visual styling takes priority
+
+---
+
+## 10. Complete State Rules
+
+### Definition
+Complete indicates the work has been completed.
+
+### Behaviour
+- Complete items remain visible in their current location
+- Complete items are visually distinct
+- Complete does not move or hide the item
+- Complete can be toggled on and off
+- Complete visual styling takes priority over Cancelled, On hold, and Fixed
+- Complete uses green outline styling
+
+---
+
+## 11. Assignment Rules
 
 ### Assignee
 - Each item can have one assignee
@@ -138,7 +174,7 @@ Done indicates the work has been completed.
 
 ---
 
-## 10. Creation Rules
+## 12. Creation Rules
 
 ### Manual Creation
 - Item can be created via UI
@@ -154,22 +190,25 @@ Done indicates the work has been completed.
 - Placement context may be provided by in-app quick add to create directly in bucket, day, or time slot
 - assignee is null
 - fixed is false
-- done is false
+- on_hold is false
+- cancelled is false
+- complete (done flag) is false
 
 ---
 
-## 11. Editing Rules
+## 13. Editing Rules
 
 - Items can be edited at any time
 - Editing does not change state unless explicitly modified
 - Moving item changes placement state
 - Detail panel schedule range edits can move item between bucket and calendar states
+- Detail panel edits autosave after changes
 - Assigning changes assignee and colour
-- Toggling Fixed or Done changes visual state only
+- Toggling Fixed, On hold, Cancelled, or Complete changes visual state only
 
 ---
 
-## 12. Deletion Rules
+## 14. Deletion Rules
 
 - Only admins can delete items
 - Deletion removes the item from the system
@@ -177,7 +216,7 @@ Done indicates the work has been completed.
 
 ---
 
-## 13. Search and Filtering Rules
+## 15. Search and Filtering Rules
 
 ### Search
 - Search is real-time
@@ -190,7 +229,7 @@ Done indicates the work has been completed.
 
 ---
 
-## 14. Week Navigation Rules
+## 16. Week Navigation Rules
 
 - User can move between weeks
 - Current week is default
@@ -199,7 +238,7 @@ Done indicates the work has been completed.
 
 ---
 
-## 15. Source of Truth
+## 17. Source of Truth
 
 - After creation, OpsScheduler is the source of truth
 - External systems do not update existing items in MVP
@@ -207,7 +246,7 @@ Done indicates the work has been completed.
 
 ---
 
-## 16. Organisation Scope
+## 18. Organisation Scope
 
 - All work items belong to a single organisation
 - All users belong to a single organisation
@@ -221,7 +260,7 @@ For MVP:
 
 ---
 
-## 17. Constraints
+## 19. Constraints
 
 - No hidden state transitions
 - No automatic reassignment
@@ -231,13 +270,14 @@ For MVP:
 
 ---
 
-## 18. Non-Negotiable Rules
+## 20. Non-Negotiable Rules
 
 These rules must not be violated:
 
 - Bucket items must always carry forward automatically
 - Scheduled items must never move automatically
-- Done items must remain visible
+- Complete items must remain visible
 - Fixed must not block movement
+- Status visual priority must be Complete > Cancelled > On hold > Fixed
 - Colour must always represent assignee
 - No sensitive data must be stored

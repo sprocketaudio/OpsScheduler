@@ -1,9 +1,8 @@
 "use client";
 
 import { Draggable } from "@fullcalendar/interaction";
-import { PointerEvent, useEffect, useRef, useState } from "react";
+import { PointerEvent, useEffect, useRef } from "react";
 import { BucketQuickAdd } from "@/features/scheduler/bucket-quick-add";
-import { ItemDetailPanel } from "@/features/scheduler/item-detail-panel";
 
 export type BucketPanelItem = {
   assignee: {
@@ -11,19 +10,81 @@ export type BucketPanelItem = {
     email: string;
     name: string;
   } | null;
+  cancelled: boolean;
   customer: string | null;
   done: boolean;
   fixed: boolean;
   id: string;
+  onHold: boolean;
   title: string;
 };
 
 type BucketPanelProps = {
   items: BucketPanelItem[];
+  onItemSelect?: (itemId: string) => void;
   targetWeekIso: string;
 };
 
-export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
+type BucketVisualStatus = "cancelled" | "done" | "fixed" | "none" | "onHold";
+
+function resolveItemVisualStatus(item: {
+  cancelled: boolean;
+  done: boolean;
+  fixed: boolean;
+  onHold: boolean;
+}): BucketVisualStatus {
+  if (item.done) {
+    return "done";
+  }
+
+  if (item.cancelled) {
+    return "cancelled";
+  }
+
+  if (item.onHold) {
+    return "onHold";
+  }
+
+  if (item.fixed) {
+    return "fixed";
+  }
+
+  return "none";
+}
+
+function resolveItemOutlineClass(status: BucketVisualStatus): string {
+  if (status === "done") {
+    return "ring-2 ring-green-600 ring-offset-1 ring-offset-background";
+  }
+
+  if (status === "cancelled") {
+    return "ring-[3px] ring-slate-700 ring-offset-2 ring-offset-background";
+  }
+
+  if (status === "onHold") {
+    return "ring-[3px] ring-amber-500 ring-offset-2 ring-offset-background";
+  }
+
+  if (status === "fixed") {
+    return "ring-2 ring-red-600 ring-offset-1 ring-offset-background";
+  }
+
+  return "";
+}
+
+function resolveItemOpacityClass(status: BucketVisualStatus): string {
+  if (status === "cancelled") {
+    return "opacity-70";
+  }
+
+  if (status === "onHold") {
+    return "opacity-85";
+  }
+
+  return "";
+}
+
+export function BucketPanel({ items, onItemSelect, targetWeekIso }: BucketPanelProps) {
   const draggableContainerRef = useRef<HTMLDivElement | null>(null);
   const pointerStartRef = useRef<{
     itemId: string;
@@ -31,7 +92,6 @@ export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
     y: number;
   } | null>(null);
   const suppressClickItemIdRef = useRef<string | null>(null);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   useEffect(() => {
     const container = draggableContainerRef.current;
@@ -51,11 +111,12 @@ export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
           return {};
         }
 
-        const title = itemCustomer ? `${itemTitle} - ${itemCustomer}` : itemTitle;
-
         return {
           id: itemId,
-          title,
+          title: itemTitle,
+          extendedProps: {
+            customer: itemCustomer || null,
+          },
         };
       },
     });
@@ -66,6 +127,8 @@ export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
   }, [items]);
 
   function handlePointerDown(itemId: string, event: PointerEvent<HTMLDivElement>) {
+    onItemSelect?.(itemId);
+
     pointerStartRef.current = {
       itemId,
       x: event.clientX,
@@ -100,63 +163,64 @@ export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
       return;
     }
 
-    setSelectedItemId(itemId);
+    onItemSelect?.(itemId);
   }
 
   return (
-    <div id="scheduler-bucket-drop-zone" className="space-y-3 rounded-md border p-3">
+    <div className="flex h-full min-h-0 flex-col gap-3">
       <BucketQuickAdd targetWeekIso={targetWeekIso} />
 
-      <div ref={draggableContainerRef} className="space-y-2">
+      <div
+        id="scheduler-bucket-drop-zone"
+        className="flex min-h-[18rem] min-w-0 flex-1 flex-col rounded-md border p-3"
+      >
+        <div ref={draggableContainerRef} className="flex min-h-0 flex-1 flex-col gap-2">
         {items.length > 0 ? (
-          items.map((item) => (
-            <div
-              key={item.id}
-              data-bucket-draggable="true"
-              data-item-id={item.id}
-              data-item-title={item.title}
-              data-item-customer={item.customer ?? ""}
-              onPointerDown={(event) => handlePointerDown(item.id, event)}
-              onPointerUp={(event) => handlePointerUp(item.id, event)}
-              onPointerCancel={() => handlePointerCancel(item.id)}
-              onClick={() => handleItemClick(item.id)}
-              className={[
-                "cursor-grab rounded-md border p-3 active:cursor-grabbing",
-                item.done ? "opacity-60" : "",
-                item.fixed ? "ring-1 ring-red-500/70" : "",
-              ].join(" ")}
-            >
-              <p className="text-sm font-medium">{item.title}</p>
-              {item.customer ? (
-                <p className="text-sm text-muted-foreground">Customer: {item.customer}</p>
-              ) : null}
-              {item.assignee ? (
-                <div className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground">
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ backgroundColor: item.assignee.colour }}
-                    aria-hidden="true"
-                  />
-                  <span>{item.assignee.name || item.assignee.email}</span>
-                </div>
-              ) : null}
-              <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                {item.fixed ? <span>Fixed</span> : null}
-                {item.done ? <span>Done</span> : null}
-                {!item.fixed && !item.done ? <span>Open</span> : null}
+          items.map((item) => {
+            const visualStatus = resolveItemVisualStatus(item);
+            return (
+              <div
+                key={item.id}
+                data-bucket-draggable="true"
+                data-item-id={item.id}
+                data-item-title={item.title}
+                data-item-customer={item.customer ?? ""}
+                onPointerDown={(event) => handlePointerDown(item.id, event)}
+                onPointerUp={(event) => handlePointerUp(item.id, event)}
+                onPointerCancel={() => handlePointerCancel(item.id)}
+                onClick={() => handleItemClick(item.id)}
+                className={[
+                  "cursor-grab rounded-md border p-3 active:cursor-grabbing [&_*]:cursor-inherit",
+                  resolveItemOutlineClass(visualStatus),
+                  resolveItemOpacityClass(visualStatus),
+                ].join(" ")}
+              >
+                <p className="text-sm font-medium">{item.title}</p>
+                {item.customer ? (
+                  <p className="text-sm text-muted-foreground">Customer: {item.customer}</p>
+                ) : null}
+                {item.assignee ? (
+                  <div className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                    <span
+                      className="size-2 rounded-full"
+                      style={{ backgroundColor: item.assignee.colour }}
+                      aria-hidden="true"
+                    />
+                    <span>{item.assignee.name || item.assignee.email}</span>
+                  </div>
+                ) : null}
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
-          <div className="rounded-md border p-3">
+          <div className="flex-1 rounded-md border p-3">
             <p className="text-sm text-muted-foreground">
               No unscheduled items in the bucket for this week.
             </p>
           </div>
         )}
+        </div>
       </div>
-
-      <ItemDetailPanel itemId={selectedItemId} onClose={() => setSelectedItemId(null)} />
     </div>
   );
 }

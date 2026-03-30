@@ -60,6 +60,7 @@ Fields:
 - colour (string, required, unique)
 - role (enum: admin, user)
 - profile_image_url (string, optional)
+- date_locale (string, required, default `en-GB`)
 - timezone (string, optional)
 - calendar_visible_start_time (string, required, default `08:00:00`)
 - calendar_visible_end_time (string, required, default `20:00:00`)
@@ -74,6 +75,7 @@ Rules:
 
 - Email must be unique
 - Colour must be unique across all users
+- date_locale must be one of the supported UI locales
 - Each user belongs to exactly one organization
 - Only active users can access the system
 
@@ -103,6 +105,8 @@ Fields:
 - end_time (time, nullable)
 
 - fixed (boolean, default false)
+- on_hold (boolean, default false)
+- cancelled (boolean, default false)
 - done (boolean, default false)
 
 - created_by (string, foreign key → User.id)
@@ -178,6 +182,22 @@ Work item state is derived from its fields.
 
 ---
 
+### on_hold
+
+- Default false
+- Indicates work is paused
+- Affects visual display only
+
+---
+
+### cancelled
+
+- Default false
+- Indicates work is cancelled
+- Affects visual display only
+
+---
+
 ### done
 
 - Default false
@@ -211,6 +231,7 @@ For MVP:
 - end_time cannot exist without start_time
 - calendar_visible_start_time and calendar_visible_end_time must be valid 24-hour times
 - calendar_visible_end_time must be later than calendar_visible_start_time
+- date_locale must be a supported locale code (MVP: `en-GB` or `en-US`)
 
 ---
 
@@ -223,6 +244,8 @@ Recommended indexes:
 - WorkItem.start_date
 - WorkItem.assignee_id
 - WorkItem.done
+- WorkItem.cancelled
+- WorkItem.on_hold
 - WorkItem.fixed
 
 ---

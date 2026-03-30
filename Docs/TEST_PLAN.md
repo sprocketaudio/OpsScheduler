@@ -31,7 +31,7 @@ This plan covers:
 - Calendar and bucket behaviour
 - Drag and drop behaviour
 - Assignment
-- Fixed and Done states
+- Status states (Fixed, On hold, Cancelled, Complete)
 - Search and filters
 - Carry forward logic
 - Role and permission handling
@@ -165,6 +165,8 @@ Used for:
 - Item appears in next week's bucket
 - assignee is null
 - fixed is false
+- on_hold is false
+- cancelled is false
 - done is false
 
 ---
@@ -180,6 +182,8 @@ Used for:
 - target_week aligns with provided or derived week context
 - assignee remains null
 - fixed remains false
+- on_hold remains false
+- cancelled remains false
 - done remains false
 
 ---
@@ -249,6 +253,28 @@ Used for:
 
 ---
 
+### Test: Calendar date picker jump navigates to selected week
+- Open dashboard calendar controls
+- Select a date using the calendar date picker jump input
+
+### Expected Result
+- Dashboard navigates to the week containing the selected date
+- Calendar and bucket both update to that selected week context
+
+---
+
+### Test: User date format locale can be adjusted
+- Open Profile/Settings
+- Set date format locale (for example UK or US)
+- Save settings
+- Return to dashboard
+
+### Expected Result
+- Week/day labels and scheduler tooltip date formatting update to the selected locale
+- Date locale persists across week navigation and session refresh
+
+---
+
 ### Test: Multi-day item spans correctly
 - Create or move item to span multiple all-day dates
 
@@ -294,6 +320,26 @@ Used for:
 ### Expected Result
 - Date updates correctly
 - Item remains scheduled
+
+---
+
+### Test: Overlapping timed items render side-by-side
+- Create two timed items with overlapping ranges in the same day
+
+### Expected Result
+- Both items render in reduced-width side-by-side columns
+- Status outlines remain visible and correctly represent item state
+
+---
+
+### Test: Timed item text shows title and customer in compact layout
+- Create timed items with durations around 30 minutes and 60 minutes
+- Include title and customer values
+
+### Expected Result
+- Timed event card shows compact two-line text with title first and customer second
+- The beginning of both title and customer is visible even at shorter durations
+- Text is top-aligned and does not overlap card borders
 
 ---
 
@@ -419,7 +465,35 @@ Used for:
 
 ---
 
-## 5.9 Done State
+## 5.9 On Hold State
+
+### Test: Mark item as On hold
+- Toggle On hold on an item
+
+### Expected Result
+- on_hold value updates
+- Item remains visible
+- Item styling changes to on-hold state
+- Item remains movable
+- On hold outline styling takes precedence over Fixed styling
+
+---
+
+## 5.10 Cancelled State
+
+### Test: Mark item as Cancelled
+- Toggle Cancelled on an item
+
+### Expected Result
+- cancelled value updates
+- Item remains visible
+- Item styling changes to cancelled state
+- Item remains movable
+- Cancelled outline styling takes precedence over On hold and Fixed styling
+
+---
+
+## 5.11 Done State
 
 ### Test: Mark item as Done
 - Toggle Done on an item
@@ -438,10 +512,11 @@ Used for:
 ### Expected Result
 - Item remains in same bucket or calendar location
 - Item is not hidden or removed
+- Done outline styling takes precedence over Cancelled, On hold, and Fixed styling
 
 ---
 
-## 5.10 Search and Filters
+## 5.12 Search and Filters
 
 ### Test: Search by title
 - Search using part of item title
@@ -486,7 +561,7 @@ Used for:
 
 ---
 
-## 5.11 Carry Forward
+## 5.13 Carry Forward
 
 ### Test: Bucket items carry forward automatically
 - Leave unscheduled bucket item in prior week
@@ -508,7 +583,7 @@ Used for:
 
 ---
 
-## 5.12 Permissions
+## 5.14 Permissions
 
 ### Test: Admin can delete item
 - Log in as admin
@@ -537,7 +612,7 @@ Used for:
 
 ---
 
-## 5.13 Organisation Scoping
+## 5.15 Organisation Scoping
 
 ### Test: Queries are organisation scoped
 - Seed multiple organisations
@@ -557,7 +632,7 @@ Used for:
 
 ---
 
-## 5.14 Audit Fields
+## 5.16 Audit Fields
 
 ### Test: created_at and updated_at are set
 - Create new item
@@ -579,7 +654,7 @@ Used for:
 
 ---
 
-## 5.15 Deployment and Environment
+## 5.17 Deployment and Environment
 
 ### Test: HTTPS is enforced
 - Access deployed app via domain
@@ -636,7 +711,7 @@ The following areas must be re-tested after any meaningful change:
 - Item creation
 - Drag and drop
 - Bucket and calendar state transitions
-- Fixed and Done behaviour
+- Status behaviour (Fixed, On hold, Cancelled, Done)
 - Carry forward logic
 - Permissions and scoping
 
@@ -653,6 +728,8 @@ Before MVP is considered ready:
 - Items can be moved back to bucket
 - Assignment works
 - Fixed works
+- On hold works
+- Cancelled works
 - Done works and does not hide items
 - Search works
 - Filters work
