@@ -27,6 +27,9 @@ The goal is to keep the model simple, predictable, and aligned with the workflow
   - VerificationToken
 - In Phase 2, User contains Auth.js profile fields plus `active`
 - Phase 3 extends User and adds Organization and WorkItem to complete the MVP workflow model
+- Phase 3 introduces database seeding for:
+  - default organization
+  - initial admin user
 
 ---
 

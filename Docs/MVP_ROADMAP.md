@@ -49,6 +49,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - No errors on startup
 - Basic page renders
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 4. Phase 2: Authentication
@@ -63,6 +67,8 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Configure Auth.js
 - Implement magic link login via email
 - Set up session handling
+- Add auth abuse protection via rate limiting
+- Revalidate active user state on session usage
 - Create login page
 - Create basic protected route
 
@@ -71,9 +77,16 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Session persists correctly
 - Unauthenticated users cannot access app
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 5. Phase 3: Data Model and Database
+
+### Status
+- Completed on March 30, 2026
 
 ### Objectives
 - Implement core data model
@@ -94,6 +107,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Data can be created and queried
 - Schema matches DATA_MODEL.md
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 6. Phase 4: Basic UI Shell
@@ -112,6 +129,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Layout renders correctly
 - Navigation elements visible
 - No functional logic yet
+
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
 
 ---
 
@@ -132,6 +153,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Calendar renders correctly
 - Bucket shows unscheduled items
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 8. Phase 6: Create Item
@@ -151,6 +176,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Items appear in the correct location after creation
 - API works correctly
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 9. Phase 7: Drag and Drop
@@ -169,6 +198,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Items can be moved freely
 - State updates correctly
 - No data inconsistencies
+
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
 
 ---
 
@@ -191,6 +224,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Changes persist
 - UI updates correctly
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 11. Phase 9: Assignment, Fixed, Done
@@ -210,6 +247,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Fixed and Done behave per WORKFLOW_RULES.md
 - Visuals match UI_UX_SPEC.md
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 12. Phase 10: Search and Filters
@@ -227,6 +268,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Search works in real time
 - Filters update view correctly
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 13. Phase 11: Carry Forward Logic
@@ -242,6 +287,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 ### Done Criteria
 - Bucket items move correctly to next week
 - No unintended movement
+
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
 
 ---
 
@@ -259,6 +308,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Permissions enforced correctly
 - No unauthorised actions possible
 
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
+
 ---
 
 ## 15. Phase 13: Polish and Stability
@@ -270,6 +323,7 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Fix UI inconsistencies
 - Improve performance
 - Add basic logging
+- Add audit logging for authentication and core item actions
 - Test all workflows
 - Clean up code
 
@@ -277,6 +331,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - System is stable
 - No major bugs
 - UI is clean and usable
+
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
 
 ---
 
@@ -288,6 +346,7 @@ Each phase should be completed, tested, and stable before moving to the next.
 ### Tasks
 - Configure nginx
 - Set up HTTPS
+- Apply baseline security headers and deployment hardening rules
 - Deploy Next.js app
 - Deploy PostgreSQL (Docker)
 - Configure environment variables
@@ -297,6 +356,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - App accessible via domain
 - HTTPS working
 - System usable by team
+
+### Phase Completion Requirement
+
+This phase is not complete until it satisfies the Definition of Done in AGENTS.md.
 
 ---
 

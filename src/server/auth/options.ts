@@ -12,6 +12,20 @@ function getRequiredEnv(name: string): string {
   return value;
 }
 
+function getPositiveIntegerFromEnv(name: string, defaultValue: number): number {
+  const rawValue = process.env[name];
+  if (!rawValue) {
+    return defaultValue;
+  }
+
+  const parsed = Number.parseInt(rawValue, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+
+  return parsed;
+}
+
 function parseApprovedEmails(value: string): Set<string> {
   return new Set(
     value
@@ -45,9 +59,19 @@ process.env.NEXTAUTH_URL ??= authUrl;
 const resend = new Resend(getRequiredEnv("RESEND_API_KEY"));
 const authEmailFrom = getRequiredEnv("AUTH_EMAIL_FROM");
 const approvedEmails = parseApprovedEmails(getRequiredEnv("AUTH_ALLOWED_EMAILS"));
+const magicLinkMaxAgeSeconds = getPositiveIntegerFromEnv("AUTH_MAGIC_LINK_MAX_AGE_SECONDS", 900);
+const sessionMaxAgeSeconds = getPositiveIntegerFromEnv("AUTH_SESSION_MAX_AGE_SECONDS", 60 * 60 * 24 * 14);
+const sessionUpdateAgeSeconds = getPositiveIntegerFromEnv(
+  "AUTH_SESSION_UPDATE_AGE_SECONDS",
+  60 * 60 * 12,
+);
 
 if (approvedEmails.size === 0) {
   throw new Error("AUTH_ALLOWED_EMAILS must contain at least one email address");
+}
+
+if (sessionUpdateAgeSeconds > sessionMaxAgeSeconds) {
+  throw new Error("AUTH_SESSION_UPDATE_AGE_SECONDS must be less than or equal to AUTH_SESSION_MAX_AGE_SECONDS");
 }
 
 export const authOptions: NextAuthOptions = {
@@ -55,8 +79,8 @@ export const authOptions: NextAuthOptions = {
   secret: authSecret,
   session: {
     strategy: "database",
-    maxAge: 60 * 60 * 24 * 30,
-    updateAge: 60 * 60 * 24,
+    maxAge: sessionMaxAgeSeconds,
+    updateAge: sessionUpdateAgeSeconds,
   },
   pages: {
     signIn: "/login",
@@ -64,7 +88,7 @@ export const authOptions: NextAuthOptions = {
   providers: [
     EmailProvider({
       from: authEmailFrom,
-      maxAge: 60 * 60 * 24,
+      maxAge: magicLinkMaxAgeSeconds,
       async sendVerificationRequest({ identifier, url, provider }) {
         const host = new URL(url).host;
         const safeHost = escapeHtml(host);
@@ -76,11 +100,11 @@ export const authOptions: NextAuthOptions = {
           text:
             `Sign in to OpsScheduler (${host})\n` +
             `${url}\n\n` +
-            "This link expires in 24 hours.",
+            `This link expires in ${Math.max(1, Math.floor(magicLinkMaxAgeSeconds / 60))} minutes.`,
           html:
             `<p>Sign in to <strong>OpsScheduler</strong> (${safeHost}).</p>` +
             `<p><a href="${url}">Click here to sign in</a></p>` +
-            "<p>This link expires in 24 hours.</p>",
+            `<p>This link expires in ${Math.max(1, Math.floor(magicLinkMaxAgeSeconds / 60))} minutes.</p>`,
         });
 
         if (error) {
@@ -105,11 +129,16 @@ export const authOptions: NextAuthOptions = {
           email: candidateEmail,
         },
         select: {
+          id: true,
           active: true,
         },
       });
 
-      if (existingUser && !existingUser.active) {
+      if (!existingUser) {
+        return false;
+      }
+
+      if (!existingUser.active) {
         return false;
       }
 

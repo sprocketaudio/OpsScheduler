@@ -328,3 +328,71 @@ OpsScheduler must be built as a serious internal tool:
 - Easy to reason about  
 
 AI must optimise for long-term quality over short-term output.
+
+---
+
+## 18. Definition of Done
+
+No feature or phase is considered complete unless all of the following are true:
+
+- Behaviour matches WORKFLOW_RULES.md
+- UI matches UI_UX_SPEC.md
+- Data model changes match DATA_MODEL.md
+- Security requirements in SECURITY_AND_COMPLIANCE.md are fully implemented
+- Relevant tests in TEST_PLAN.md pass
+- Documentation has been updated to reflect the implementation
+
+Additionally:
+
+- No security regressions are introduced
+- No undocumented behaviour exists
+- No temporary or placeholder implementations remain
+
+If any of the above are not satisfied, the work is not complete.
+
+---
+
+## 19. Pre-Implementation Checklist
+
+Before starting any feature or phase, AI must:
+
+- Identify which documents apply (UI, workflow, data, security)
+- Confirm expected behaviour from those documents
+- Identify any gaps or ambiguities
+- Resolve or flag those before implementation
+
+AI must not begin implementation if requirements are unclear or conflicting.
+
+---
+
+## 20. In-Progress Safeguards
+
+During implementation, AI must continuously validate that:
+
+- Changes remain aligned with all relevant documents
+- No security controls are skipped or deferred unintentionally
+- No UI behaviour deviates from UI_UX_SPEC.md
+- No undocumented assumptions are introduced
+- Partial implementations do not introduce inconsistent states
+
+If any issue is identified during implementation, AI must:
+
+- pause further changes
+- resolve or flag the issue
+- update documentation if required
+
+AI must not complete a feature and defer known issues to later phases unless explicitly defined in MVP_ROADMAP.md.
+
+---
+
+## 21. Post-Implementation Review
+
+After completing any feature, AI must:
+
+- Validate implementation against all relevant documents
+- Confirm no security controls are missing
+- Confirm no workflow rules are violated
+- Confirm UI behaviour matches specification
+- Confirm tests cover the implemented behaviour
+
+Any mismatch must be corrected before the feature is considered complete.

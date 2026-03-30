@@ -95,6 +95,9 @@ OpsScheduler is a single application with the following components:
 - Sessions stored in database
 - Secure cookies with HTTPS
 - Unauthenticated users are redirected to `/login` for protected routes
+- Sign-in allowed only for active users already provisioned in database
+- Session access is revalidated against current user activity status
+- Auth endpoint uses request rate limiting for abuse protection
 
 ---
 
@@ -136,7 +139,17 @@ Required environment variables include:
 - AUTH_URL
 - AUTH_EMAIL_FROM
 - AUTH_ALLOWED_EMAILS
+- AUTH_MAGIC_LINK_MAX_AGE_SECONDS
+- AUTH_SESSION_MAX_AGE_SECONDS
+- AUTH_SESSION_UPDATE_AGE_SECONDS
+- AUTH_SIGNIN_RATE_LIMIT_REQUESTS
+- AUTH_SIGNIN_RATE_LIMIT_WINDOW_SECONDS
 - RESEND_API_KEY
+
+Seed configuration variables:
+
+- SEED_ORGANIZATION_NAME
+- SEED_ADMIN_EMAIL
 
 Additional variables may be added as needed.
 
@@ -149,6 +162,11 @@ Tooling baseline for MVP:
 
 - Runtime: Node.js 22 LTS
 - Package manager: pnpm
+
+Database bootstrap for MVP:
+
+- Apply migrations via `pnpm prisma:migrate:deploy`
+- Seed default organization and initial users via `pnpm prisma:seed`
 
 ---
 
@@ -171,6 +189,8 @@ Tooling baseline for MVP:
 - Secrets must be stored in environment variables
 - Input validation must be enforced at API boundary
 - Authentication handled by trusted library
+- Baseline security headers must be applied (CSP, frame protection, and referrer policy)
+- Auth and item-creation endpoints must be rate-limited
 
 ---
 

@@ -10,18 +10,10 @@ import { Label } from "@/components/ui/label";
 
 type SubmitState = "idle" | "sending" | "sent" | "error";
 
-const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  AccessDenied: "This email address is not approved for OpsScheduler access.",
-  Verification: "The sign-in link is invalid or expired. Request a new one.",
-  default: "Unable to sign in right now. Please try again.",
-};
-
-function getAuthErrorMessage(errorCode: string | null): string | null {
-  if (!errorCode) {
-    return null;
-  }
-  return AUTH_ERROR_MESSAGES[errorCode] ?? AUTH_ERROR_MESSAGES.default;
-}
+const GENERIC_SENT_MESSAGE =
+  "If this email is approved, a sign-in link has been sent. The link expires automatically.";
+const GENERIC_FAILURE_MESSAGE = "Unable to process sign-in right now. Please try again.";
+const EXPIRED_LINK_MESSAGE = "That sign-in link is invalid or expired. Request a new one.";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -30,7 +22,7 @@ export function LoginForm() {
     [searchParams],
   );
   const initialError = useMemo(
-    () => getAuthErrorMessage(searchParams.get("error")),
+    () => (searchParams.get("error") === "Verification" ? EXPIRED_LINK_MESSAGE : null),
     [searchParams],
   );
 
@@ -46,19 +38,33 @@ export function LoginForm() {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const response = await signIn("email", {
-      email: normalizedEmail,
-      callbackUrl,
-      redirect: false,
-    });
+    try {
+      const response = await signIn("email", {
+        email: normalizedEmail,
+        callbackUrl,
+        redirect: false,
+      });
 
-    if (!response || !response.ok || response.error) {
+      if (!response) {
+        setState("error");
+        setErrorMessage(GENERIC_FAILURE_MESSAGE);
+        return;
+      }
+
+      if (!response.ok && response.error && response.error !== "AccessDenied") {
+        setState("error");
+        setErrorMessage(GENERIC_FAILURE_MESSAGE);
+        return;
+      }
+
+      // Return a neutral confirmation to avoid account enumeration.
+      setState("sent");
+      return;
+    } catch {
       setState("error");
-      setErrorMessage(getAuthErrorMessage(response?.error ?? null));
+      setErrorMessage(GENERIC_FAILURE_MESSAGE);
       return;
     }
-
-    setState("sent");
   }
 
   return (
@@ -82,8 +88,8 @@ export function LoginForm() {
 
       {state === "sent" ? (
         <Alert>
-          <AlertTitle>Magic link sent</AlertTitle>
-          <AlertDescription>Check your inbox. The sign-in link expires in 24 hours.</AlertDescription>
+          <AlertTitle>Sign-in request received</AlertTitle>
+          <AlertDescription>{GENERIC_SENT_MESSAGE}</AlertDescription>
         </Alert>
       ) : null}
 

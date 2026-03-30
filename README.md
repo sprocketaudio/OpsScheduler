@@ -67,7 +67,8 @@ copy .env.example .env
 3. Apply and validate Prisma setup:
 
 ```bash
-pnpm exec prisma migrate deploy
+pnpm prisma:migrate:deploy
+pnpm prisma:seed
 pnpm prisma:format
 pnpm prisma:validate
 ```
@@ -78,7 +79,7 @@ pnpm prisma:validate
 pnpm dev
 ```
 
-Note: Phase 2 authentication is implemented. Core workflow models (Organization, WorkItem) are implemented in Phase 3.
+Note: Phase 3 data model and database seeding are implemented.
 
 ---
 
@@ -91,7 +92,17 @@ Required variables:
 - AUTH_URL  
 - AUTH_EMAIL_FROM  
 - AUTH_ALLOWED_EMAILS  
+- AUTH_MAGIC_LINK_MAX_AGE_SECONDS  
+- AUTH_SESSION_MAX_AGE_SECONDS  
+- AUTH_SESSION_UPDATE_AGE_SECONDS  
+- AUTH_SIGNIN_RATE_LIMIT_REQUESTS  
+- AUTH_SIGNIN_RATE_LIMIT_WINDOW_SECONDS  
 - RESEND_API_KEY  
+
+Seed variables:
+
+- SEED_ORGANIZATION_NAME  
+- SEED_ADMIN_EMAIL  
 
 ---
 

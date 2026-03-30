@@ -46,15 +46,17 @@ The system must not store:
 - Authentication is handled via email-based magic link login
 - No password storage is allowed
 - Authentication must be implemented using a proven library (Auth.js)
-- Tokens must be short-lived and secure
+- Magic-link tokens must be short-lived and secure (default 15 minutes)
 - Sessions must be securely stored and managed
+- Login request responses must use a neutral confirmation message to reduce user-enumeration risk
 
 ---
 
 ## 5. Session Management
 
 - Sessions must be stored in the database
-- Sessions should support long-lived access via rolling expiry
+- Sessions should support rolling expiry with explicit limits (default 14 days max age, 12 hours update age)
+- Session usage must be revalidated against the current user active state
 - Session cookies must be:
   - HTTP-only
   - Secure (HTTPS only)
@@ -68,8 +70,9 @@ The system must not store:
 - No public registration
 - Users must be pre-approved or invited
 
-For MVP Phase 2:
+For MVP Phase 2 and Phase 3:
 - Approved users are controlled by a server-side email allowlist (`AUTH_ALLOWED_EMAILS`)
+- Login is allowed only for active, provisioned users stored in the database
 
 ### Roles
 
@@ -104,6 +107,8 @@ For MVP:
 - No unvalidated input should be processed
 - Only required fields should be accepted
 - Reject unexpected or extra fields
+- Rate limiting must be applied to authentication and item-creation endpoints
+- Auth rate-limit controls must be configurable via environment variables
 
 ---
 
@@ -124,6 +129,7 @@ For MVP:
 - Database must not be publicly accessible
 - Secrets must be stored in environment variables
 - No secrets must be committed to source control
+- Baseline security headers must be configured (including CSP, frame protections, and referrer policy)
 
 ---
 
@@ -134,6 +140,7 @@ For MVP:
   - item creation
   - item updates
   - deletions
+- Audit logging for auth and core business actions is mandatory for MVP hardening (implemented in later phase)
 
 - Logs must not contain sensitive data
 - Logging should support debugging but remain minimal
