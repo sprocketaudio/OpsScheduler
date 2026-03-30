@@ -79,6 +79,8 @@ OpsScheduler is a single application with the following components:
 - Prisma ORM
 - Zod for validation
 - `POST /api/items` creation endpoint with strict validation, org-scoped writes, and rate limiting
+- `GET /api/items/:id` detail endpoint for loading item data into the detail panel
+- `PATCH /api/items/:id` detail update endpoint for title/customer/notes edits
 - `PATCH /api/items/:id/placement` placement endpoint for drag-and-drop scheduling updates
 - `PATCH /api/users/me/preferences` endpoint for authenticated user calendar-view preferences
 

@@ -356,6 +356,18 @@ Used for:
 
 ---
 
+### Test: Edit item schedule range in detail panel
+- Open item detail panel
+- Set start date and optional time range
+- Save changes
+- Reopen and clear start date, then save
+
+### Expected Result
+- Setting schedule range moves item into the calendar with matching date/time placement
+- Clearing start date removes date/time placement and returns the item to the bucket
+
+---
+
 ## 5.7 Assignment
 
 ### Test: Assign user to item

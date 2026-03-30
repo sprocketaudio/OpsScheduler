@@ -1,14 +1,15 @@
 "use client";
 
 import dayGridPlugin from "@fullcalendar/daygrid";
-import type { EventInput } from "@fullcalendar/core";
+import type { EventClickArg, EventContentArg, EventInput, EventMountArg } from "@fullcalendar/core";
 import interactionPlugin, { type DateClickArg } from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dynamic from "next/dynamic";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ItemDetailPanel } from "@/features/scheduler/item-detail-panel";
 
 const FullCalendar = dynamic(() => import("@fullcalendar/react"), {
   ssr: false,
@@ -45,6 +46,11 @@ type CalendarEventDropArg = {
   revert: () => void;
 };
 
+type CalendarEventResizeArg = {
+  event: CalendarEventLike;
+  revert: () => void;
+};
+
 type CalendarEventDragStopArg = {
   event: CalendarEventLike;
   jsEvent: {
@@ -59,6 +65,48 @@ type CalendarPlacementEvent = {
   id: string;
   start: Date | null;
 };
+
+function buildEventTitleMap(events: EventInput[]): Map<string, string> {
+  const titlesById = new Map<string, string>();
+
+  for (const event of events) {
+    if (!event || typeof event !== "object") {
+      continue;
+    }
+
+    const eventId = "id" in event ? event.id : undefined;
+    const eventTitle = "title" in event ? event.title : undefined;
+
+    if ((typeof eventId === "string" || typeof eventId === "number") && typeof eventTitle === "string") {
+      titlesById.set(String(eventId), eventTitle);
+    }
+  }
+
+  return titlesById;
+}
+
+function renderEventContent(arg: EventContentArg) {
+  const maxLines = arg.event.allDay ? 1 : 3;
+
+  return (
+    <div className="flex h-full min-w-0 flex-col leading-tight">
+      {arg.timeText ? (
+        <div className="truncate text-[11px] font-medium text-foreground/80">{arg.timeText}</div>
+      ) : null}
+      <div
+        className="break-words text-[11px] font-semibold text-foreground"
+        style={{
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: maxLines,
+          overflow: "hidden",
+        }}
+      >
+        {arg.event.title}
+      </div>
+    </div>
+  );
+}
 
 function formatLocalIsoDate(value: Date): string {
   const year = value.getFullYear();
@@ -211,6 +259,27 @@ export function SchedulerCalendar({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [interactionError, setInteractionError] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const titlesById = buildEventTitleMap(events);
+    const renderedEventElements = document.querySelectorAll<HTMLElement>("[data-scheduler-event-id]");
+
+    renderedEventElements.forEach((element) => {
+      const eventId = element.dataset.schedulerEventId;
+      if (!eventId) {
+        return;
+      }
+
+      const title = titlesById.get(eventId);
+      if (title) {
+        element.setAttribute("title", title);
+        return;
+      }
+
+      element.removeAttribute("title");
+    });
+  }, [events]);
 
   function handleDateClick(info: DateClickArg) {
     const clickEvent = info.jsEvent as MouseEvent | undefined;
@@ -306,6 +375,11 @@ export function SchedulerCalendar({
     setErrorMessage(null);
   }
 
+  function handleEventClick(info: EventClickArg) {
+    info.jsEvent.preventDefault();
+    setSelectedItemId(String(info.event.id));
+  }
+
   async function handleEventReceive(arg: CalendarEventReceiveArg) {
     const calendarPlacement = buildCalendarPlacement({
       id: String(arg.event.id),
@@ -368,6 +442,42 @@ export function SchedulerCalendar({
     router.refresh();
   }
 
+  async function handleEventResize(arg: CalendarEventResizeArg) {
+    const calendarPlacement = buildCalendarPlacement({
+      id: String(arg.event.id),
+      start: arg.event.start,
+      end: arg.event.end,
+      allDay: arg.event.allDay,
+    });
+
+    if (!calendarPlacement) {
+      arg.revert();
+      setInteractionError("Unable to resize item.");
+      return;
+    }
+
+    const result = await patchItemPlacement(String(arg.event.id), {
+      placement: {
+        ...calendarPlacement,
+        targetWeek: weekStartIso,
+      },
+    });
+
+    if (!result.ok) {
+      arg.revert();
+      setInteractionError(result.error);
+      return;
+    }
+
+    setInteractionError(null);
+    router.refresh();
+  }
+
+  function handleEventDidMount(arg: EventMountArg) {
+    arg.el.dataset.schedulerEventId = String(arg.event.id);
+    arg.el.setAttribute("title", arg.event.title);
+  }
+
   function handleEventDragStart() {
     setBucketDropZoneActive(true);
   }
@@ -419,15 +529,21 @@ export function SchedulerCalendar({
         droppable
         selectable={false}
         eventStartEditable
-        eventDurationEditable={false}
+        eventDurationEditable
+        eventResizableFromStart
         headerToolbar={false}
+        eventContent={renderEventContent}
+        eventMinHeight={24}
         slotMinTime={visibleStartTime}
         slotMaxTime={visibleEndTime}
         scrollTime={visibleStartTime}
         scrollTimeReset={false}
         dateClick={handleDateClick}
+        eventClick={handleEventClick}
         eventReceive={handleEventReceive}
         eventDrop={handleEventDrop}
+        eventResize={handleEventResize}
+        eventDidMount={handleEventDidMount}
         eventDragStart={handleEventDragStart}
         eventDragStop={handleEventDragStop}
         dragRevertDuration={0}
@@ -475,6 +591,8 @@ export function SchedulerCalendar({
           </form>
         </div>
       ) : null}
+
+      <ItemDetailPanel itemId={selectedItemId} onClose={() => setSelectedItemId(null)} />
     </div>
   );
 }

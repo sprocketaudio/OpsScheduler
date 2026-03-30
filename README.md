@@ -79,7 +79,7 @@ pnpm prisma:validate
 pnpm dev
 ```
 
-Note: Phase 7 drag-and-drop scheduling is implemented across bucket and calendar with DB-backed placement updates.
+Note: Phases 7 and 8 are implemented, including drag-and-drop scheduling and detail-panel editing for title/customer/notes.
 
 ---
 

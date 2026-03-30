@@ -163,6 +163,7 @@ Done indicates the work has been completed.
 - Items can be edited at any time
 - Editing does not change state unless explicitly modified
 - Moving item changes placement state
+- Detail panel schedule range edits can move item between bucket and calendar states
 - Assigning changes assignee and colour
 - Toggling Fixed or Done changes visual state only
 

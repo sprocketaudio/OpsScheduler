@@ -1,8 +1,9 @@
 "use client";
 
 import { Draggable } from "@fullcalendar/interaction";
-import { useEffect, useRef } from "react";
+import { PointerEvent, useEffect, useRef, useState } from "react";
 import { BucketQuickAdd } from "@/features/scheduler/bucket-quick-add";
+import { ItemDetailPanel } from "@/features/scheduler/item-detail-panel";
 
 export type BucketPanelItem = {
   customer: string | null;
@@ -19,6 +20,13 @@ type BucketPanelProps = {
 
 export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
   const draggableContainerRef = useRef<HTMLDivElement | null>(null);
+  const pointerStartRef = useRef<{
+    itemId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const suppressClickItemIdRef = useRef<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   useEffect(() => {
     const container = draggableContainerRef.current;
@@ -52,6 +60,44 @@ export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
     };
   }, [items]);
 
+  function handlePointerDown(itemId: string, event: PointerEvent<HTMLDivElement>) {
+    pointerStartRef.current = {
+      itemId,
+      x: event.clientX,
+      y: event.clientY,
+    };
+  }
+
+  function handlePointerUp(itemId: string, event: PointerEvent<HTMLDivElement>) {
+    const pointerStart = pointerStartRef.current;
+    if (!pointerStart || pointerStart.itemId !== itemId) {
+      return;
+    }
+
+    const deltaX = event.clientX - pointerStart.x;
+    const deltaY = event.clientY - pointerStart.y;
+    if (Math.hypot(deltaX, deltaY) > 6) {
+      suppressClickItemIdRef.current = itemId;
+    }
+
+    pointerStartRef.current = null;
+  }
+
+  function handlePointerCancel(itemId: string) {
+    if (pointerStartRef.current?.itemId === itemId) {
+      pointerStartRef.current = null;
+    }
+  }
+
+  function handleItemClick(itemId: string) {
+    if (suppressClickItemIdRef.current === itemId) {
+      suppressClickItemIdRef.current = null;
+      return;
+    }
+
+    setSelectedItemId(itemId);
+  }
+
   return (
     <div id="scheduler-bucket-drop-zone" className="space-y-3 rounded-md border p-3">
       <BucketQuickAdd targetWeekIso={targetWeekIso} />
@@ -65,6 +111,10 @@ export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
               data-item-id={item.id}
               data-item-title={item.title}
               data-item-customer={item.customer ?? ""}
+              onPointerDown={(event) => handlePointerDown(item.id, event)}
+              onPointerUp={(event) => handlePointerUp(item.id, event)}
+              onPointerCancel={() => handlePointerCancel(item.id)}
+              onClick={() => handleItemClick(item.id)}
               className="cursor-grab rounded-md border p-3 active:cursor-grabbing"
             >
               <p className="text-sm font-medium">{item.title}</p>
@@ -86,6 +136,8 @@ export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
           </div>
         )}
       </div>
+
+      <ItemDetailPanel itemId={selectedItemId} onClose={() => setSelectedItemId(null)} />
     </div>
   );
 }
