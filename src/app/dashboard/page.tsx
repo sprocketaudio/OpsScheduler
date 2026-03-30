@@ -5,6 +5,16 @@ import { Input } from "@/components/ui/input";
 import { SignOutButton } from "@/features/auth/sign-out-button";
 import { getServerAuthSession } from "@/server/auth/session";
 
+const WEEKDAY_LABELS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
+
 function getWeekCommencingLabel(referenceDate: Date): string {
   const monday = new Date(referenceDate);
   const day = monday.getDay();
@@ -75,10 +85,28 @@ export default async function DashboardPage() {
             <CardTitle>Weekly Calendar View</CardTitle>
             <CardDescription>Monday to Sunday calendar area with all-day and timed sections.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Scheduling interactions are implemented in later phases.
-            </p>
+          <CardContent className="space-y-3">
+            <div className="grid gap-2 md:grid-cols-7">
+              {WEEKDAY_LABELS.map((label) => (
+                <div key={label} className="rounded-md border p-2">
+                  <p className="text-sm font-medium">{label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-md border p-3">
+              <p className="text-sm font-medium">All-day area</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Placeholder for all-day and multi-day scheduling rows.
+              </p>
+            </div>
+
+            <div className="rounded-md border p-3">
+              <p className="text-sm font-medium">Time grid area</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Placeholder for timed scheduling rows.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
@@ -87,10 +115,19 @@ export default async function DashboardPage() {
             <CardTitle>Weekly Bucket</CardTitle>
             <CardDescription>Unscheduled items for the selected target week.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Bucket item rendering and carry-forward behaviour are implemented in later phases.
-            </p>
+          <CardContent className="space-y-3">
+            <div className="rounded-md border p-3">
+              <p className="text-sm font-medium">Bucket list area</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Placeholder for unscheduled items scoped to the selected week.
+              </p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className="text-sm font-medium">Quick add area</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Placeholder for quick item creation controls.
+              </p>
+            </div>
             <p className="mt-3 text-sm text-muted-foreground">Signed in as {session.user.email}</p>
           </CardContent>
         </Card>

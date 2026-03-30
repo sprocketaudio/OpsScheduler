@@ -79,7 +79,7 @@ pnpm prisma:validate
 pnpm dev
 ```
 
-Note: Phase 3 data model and database seeding are implemented.
+Note: Phase 4 basic UI shell is implemented. Calendar and bucket remain placeholder-only until later phases.
 
 ---
 
