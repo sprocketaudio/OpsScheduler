@@ -575,7 +575,7 @@ Used for:
 
 ### Test: Bucket items carry forward automatically
 - Leave unscheduled bucket item in prior week
-- Move into next week context or trigger carry forward process
+- Open dashboard in next week context (or any week) to trigger carry forward on server load
 
 ### Expected Result
 - Item appears in next week's bucket
@@ -585,7 +585,7 @@ Used for:
 
 ### Test: Scheduled items do not carry forward
 - Leave scheduled item in prior week
-- Move into next week context or trigger carry forward process
+- Open dashboard in next week context (or any week) to trigger carry forward on server load
 
 ### Expected Result
 - Scheduled item remains on original date

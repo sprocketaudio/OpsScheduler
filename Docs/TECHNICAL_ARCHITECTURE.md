@@ -86,6 +86,7 @@ OpsScheduler is a single application with the following components:
 - `PATCH /api/items/:id` detail update endpoint for title/customer/notes, assignee, fixed, on_hold, cancelled, and done edits
 - `PATCH /api/items/:id/placement` placement endpoint for drag-and-drop scheduling updates
 - `PATCH /api/users/me/preferences` endpoint for authenticated user profile preferences (date locale and calendar visible window)
+- Dashboard server load applies organization-scoped carry-forward for unscheduled bucket items from prior weeks into the current week
 
 ---
 

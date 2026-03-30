@@ -16,6 +16,7 @@ import {
 } from "@/features/scheduler/week";
 import { getServerAuthSession } from "@/server/auth/session";
 import { prisma } from "@/server/db/client";
+import { carryForwardBucketItemsForOrganization } from "@/server/scheduler/carry-forward";
 
 type DashboardPageProps = {
   searchParams?: Promise<{
@@ -159,6 +160,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   if (!currentUser) {
     redirect("/login?callbackUrl=/dashboard");
   }
+
+  await carryForwardBucketItemsForOrganization({
+    organizationId: currentUser.organizationId,
+    referenceDate: currentWeekStart,
+  });
+
   const dateLocale = normalizeDateLocale(currentUser.dateLocale);
   const weekLabel = formatWeekCommencingLabel(selectedWeekStart, dateLocale);
   const searchFilters: Prisma.WorkItemWhereInput[] = [];

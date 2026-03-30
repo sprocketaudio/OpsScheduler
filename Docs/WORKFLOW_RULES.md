@@ -95,6 +95,7 @@ A work item can exist in the following states:
 ### Automatic Carry Forward
 - Applies only to items in the bucket
 - At the start of a new week, all unscheduled items move to the new current week
+- Carry-forward is triggered by dashboard server load and is scoped to the signed-in user's organisation
 
 ### Non-Carry Forward
 - Items already scheduled on a date do not move automatically
