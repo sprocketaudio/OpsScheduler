@@ -149,8 +149,9 @@ Done indicates the work has been completed.
 
 ### API Creation
 - Item is created via POST request
-- Item is always created in bucket state
-- target_week is automatically set to next week
+- Default API creation (without placement context) creates the item in bucket state
+- Default API creation sets target_week automatically to next week
+- Placement context may be provided by in-app quick add to create directly in bucket, day, or time slot
 - assignee is null
 - fixed is false
 - done is false

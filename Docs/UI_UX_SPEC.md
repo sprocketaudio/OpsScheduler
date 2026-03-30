@@ -36,6 +36,10 @@ The top bar must include:
 - Signed-in user identity display (email or display name)
 - Optional display of organisation name in a non-interactive format
 
+Profile/Settings must include:
+
+- User-level calendar visible window controls (start and end time)
+
 ---
 
 ## 4. Calendar View
@@ -44,6 +48,7 @@ The top bar must include:
 
 - 7-day week view (Monday to Sunday)
 - Weekend days must be visible
+- Calendar time grid should default to a workday-focused visible window (08:00-20:00), user-adjustable in Profile/Settings
 - Each day has:
   - All-day section (top)
   - Time grid (below)
@@ -135,8 +140,12 @@ Opening an item displays a panel (side or modal) with:
 
 ### Behaviour
 
-- Clicking empty space (day, time, or bucket):
-  - opens inline input
+- Calendar quick add:
+  - double-click empty day or time slot
+  - opens a lightweight quick-add prompt
+- Bucket quick add:
+  - click explicit quick-add control in the bucket panel
+  - opens a lightweight quick-add prompt
 - User types title
 - Press enter:
   - creates item in that location
@@ -145,6 +154,7 @@ Opening an item displays a panel (side or modal) with:
 
 - No full form required
 - Minimal friction
+- Quick-add UI must not shift the main calendar or bucket layout when opened
 - Item is created in the location clicked (bucket, day, or time slot)
 - Additional details added later via panel
 

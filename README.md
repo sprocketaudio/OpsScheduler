@@ -79,7 +79,7 @@ pnpm prisma:validate
 pnpm dev
 ```
 
-Note: Phase 5 read-only calendar and bucket views are implemented with week-scoped DB data. Item creation and drag-and-drop scheduling are implemented in later phases.
+Note: Phase 7 drag-and-drop scheduling is implemented across bucket and calendar with DB-backed placement updates.
 
 ---
 

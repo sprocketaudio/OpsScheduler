@@ -21,24 +21,26 @@ model Organization {
 }
 
 model User {
-  id                String       @id @default(cuid())
-  name              String
-  email             String       @unique
-  emailVerified     DateTime?
-  image             String?      @map("profile_image_url")
-  timezone          String?
-  colour            String       @unique
-  role              UserRole     @default(user)
-  active            Boolean      @default(true)
-  organizationId    String       @map("organization_id")
-  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  accounts          Account[]
-  sessions          Session[]
-  assignedWorkItems WorkItem[]   @relation("WorkItemAssignee")
-  createdWorkItems  WorkItem[]   @relation("WorkItemCreatedBy")
-  updatedWorkItems  WorkItem[]   @relation("WorkItemUpdatedBy")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
+  id                       String       @id @default(cuid())
+  name                     String
+  email                    String       @unique
+  emailVerified            DateTime?
+  image                    String?      @map("profile_image_url")
+  timezone                 String?
+  calendarVisibleStartTime String       @default("08:00:00") @map("calendar_visible_start_time") @db.VarChar(8)
+  calendarVisibleEndTime   String       @default("20:00:00") @map("calendar_visible_end_time") @db.VarChar(8)
+  colour                   String       @unique
+  role                     UserRole     @default(user)
+  active                   Boolean      @default(true)
+  organizationId           String       @map("organization_id")
+  organization             Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  accounts                 Account[]
+  sessions                 Session[]
+  assignedWorkItems        WorkItem[]   @relation("WorkItemAssignee")
+  createdWorkItems         WorkItem[]   @relation("WorkItemCreatedBy")
+  updatedWorkItems         WorkItem[]   @relation("WorkItemUpdatedBy")
+  createdAt                DateTime     @default(now()) @map("created_at")
+  updatedAt                DateTime     @updatedAt @map("updated_at")
 
   @@index([organizationId])
 }

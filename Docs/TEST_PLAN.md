@@ -132,7 +132,7 @@ Used for:
 
 ### Test: Quick add item in day area
 - Go to current week view
-- Click empty day/all-day area
+- Double-click empty day/all-day area
 - Enter title
 - Save or confirm
 
@@ -145,7 +145,7 @@ Used for:
 
 ### Test: Quick add item in time slot
 - Go to current week view
-- Click empty time slot
+- Double-click empty time slot
 - Enter title
 - Save or confirm
 
@@ -166,6 +166,21 @@ Used for:
 - assignee is null
 - fixed is false
 - done is false
+
+---
+
+### Test: Create item via API with placement context
+- Send valid POST request including placement context for:
+  - bucket
+  - calendar all-day
+  - calendar timed
+
+### Expected Result
+- Item is created in the specified location
+- target_week aligns with provided or derived week context
+- assignee remains null
+- fixed remains false
+- done remains false
 
 ---
 
@@ -222,6 +237,18 @@ Used for:
 
 ---
 
+### Test: Calendar visible workday window can be adjusted
+- Open Profile/Settings
+- Set visible start and end times in calendar view settings
+- Save settings
+- Return to dashboard
+
+### Expected Result
+- Calendar time grid updates to the selected window
+- Saved window persists across week navigation and session refresh
+
+---
+
 ### Test: Multi-day item spans correctly
 - Create or move item to span multiple all-day dates
 
@@ -267,6 +294,16 @@ Used for:
 ### Expected Result
 - Date updates correctly
 - Item remains scheduled
+
+---
+
+### Test: Drag update endpoint persists placement
+- Move an item by drag interaction (bucket -> calendar, calendar -> bucket, calendar -> calendar)
+- Verify resulting fields in database via API or direct query
+
+### Expected Result
+- Placement fields (`start_date`, `start_time`, `end_date`, `end_time`) match the final drop location
+- `updated_by` reflects the current user
 
 ---
 

@@ -5,7 +5,9 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { BucketPanel } from "@/features/scheduler/bucket-panel";
 import { SchedulerCalendar } from "@/features/scheduler/calendar-view";
+import { resolveVisibleWindow } from "@/features/scheduler/visible-window";
 import {
   addDaysUtc,
   formatIsoDateUtc,
@@ -40,6 +42,10 @@ function combineDateAndTime(dateValue: Date, timeValue: Date): string {
   return `${dateIso}T${hours}:${minutes}:${seconds}`;
 }
 
+function buildDashboardHref(weekIso: string): string {
+  return `/dashboard?week=${weekIso}`;
+}
+
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await getServerAuthSession();
 
@@ -60,6 +66,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     select: {
       email: true,
       organizationId: true,
+      calendarVisibleStartTime: true,
+      calendarVisibleEndTime: true,
     },
   });
 
@@ -154,9 +162,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     });
   }
 
-  const previousWeekHref = `/dashboard?week=${formatIsoDateUtc(addDaysUtc(selectedWeekStart, -7))}`;
-  const currentWeekHref = `/dashboard?week=${formatIsoDateUtc(currentWeekStart)}`;
-  const nextWeekHref = `/dashboard?week=${formatIsoDateUtc(addDaysUtc(selectedWeekStart, 7))}`;
+  const { visibleStartTime, visibleEndTime } = resolveVisibleWindow(
+    currentUser.calendarVisibleStartTime,
+    currentUser.calendarVisibleEndTime,
+  );
+
+  const previousWeekHref = buildDashboardHref(formatIsoDateUtc(addDaysUtc(selectedWeekStart, -7)));
+  const currentWeekHref = buildDashboardHref(formatIsoDateUtc(currentWeekStart));
+  const nextWeekHref = buildDashboardHref(formatIsoDateUtc(addDaysUtc(selectedWeekStart, 7)));
 
   return (
     <main className="min-h-screen">
@@ -192,9 +205,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <Button type="button" variant="outline" disabled>
               Fixed Items
             </Button>
-            <Button type="button" variant="outline" disabled>
+            <Link href="/settings" className={buttonVariants({ variant: "outline" })}>
               Profile
-            </Button>
+            </Link>
             <SignOutButton />
           </div>
         </div>
@@ -211,6 +224,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <CardContent>
             <SchedulerCalendar
               events={calendarEvents}
+              visibleEndTime={visibleEndTime}
+              visibleStartTime={visibleStartTime}
               weekStartIso={formatIsoDateUtc(selectedWeekStart)}
             />
           </CardContent>
@@ -222,29 +237,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <CardDescription>Unscheduled items for this target week ({bucketItems.length}).</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {bucketItems.length > 0 ? (
-              <div className="space-y-2">
-                {bucketItems.map((item) => (
-                  <div key={item.id} className="rounded-md border p-3">
-                    <p className="text-sm font-medium">{item.title}</p>
-                    {item.customer ? (
-                      <p className="text-sm text-muted-foreground">Customer: {item.customer}</p>
-                    ) : null}
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      {item.fixed ? <span>Fixed</span> : null}
-                      {item.done ? <span>Done</span> : null}
-                      {!item.fixed && !item.done ? <span>Open</span> : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-md border p-3">
-                <p className="text-sm text-muted-foreground">
-                  No unscheduled items in the bucket for this week.
-                </p>
-              </div>
-            )}
+            <BucketPanel
+              items={bucketItems}
+              targetWeekIso={formatIsoDateUtc(selectedWeekStart)}
+            />
           </CardContent>
         </Card>
       </section>

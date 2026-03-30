@@ -167,6 +167,9 @@ This phase is not complete until it satisfies the Definition of Done in AGENTS.m
 
 ## 8. Phase 6: Create Item
 
+### Status
+- Completed on March 30, 2026
+
 ### Objectives
 - Enable item creation
 
@@ -189,6 +192,9 @@ This phase is not complete until it satisfies the Definition of Done in AGENTS.m
 ---
 
 ## 9. Phase 7: Drag and Drop
+
+### Status
+- Completed on March 30, 2026
 
 ### Objectives
 - Enable scheduling interaction

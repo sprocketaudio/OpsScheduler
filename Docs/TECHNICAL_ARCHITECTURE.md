@@ -78,6 +78,9 @@ OpsScheduler is a single application with the following components:
 - Next.js API routes or server actions
 - Prisma ORM
 - Zod for validation
+- `POST /api/items` creation endpoint with strict validation, org-scoped writes, and rate limiting
+- `PATCH /api/items/:id/placement` placement endpoint for drag-and-drop scheduling updates
+- `PATCH /api/users/me/preferences` endpoint for authenticated user calendar-view preferences
 
 ---
 

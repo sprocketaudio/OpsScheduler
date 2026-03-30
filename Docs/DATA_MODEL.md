@@ -61,6 +61,8 @@ Fields:
 - role (enum: admin, user)
 - profile_image_url (string, optional)
 - timezone (string, optional)
+- calendar_visible_start_time (string, required, default `08:00:00`)
+- calendar_visible_end_time (string, required, default `20:00:00`)
 - active (boolean, default true)
 
 - organization_id (string, foreign key → Organization.id)
@@ -207,6 +209,8 @@ For MVP:
 - WorkItem.target_week must be valid
 - start_time cannot exist without start_date
 - end_time cannot exist without start_time
+- calendar_visible_start_time and calendar_visible_end_time must be valid 24-hour times
+- calendar_visible_end_time must be later than calendar_visible_start_time
 
 ---
 
