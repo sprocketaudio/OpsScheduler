@@ -49,6 +49,8 @@ The system must not store:
 - Magic-link tokens must be short-lived and secure (default 15 minutes)
 - Sessions must be securely stored and managed
 - Login request responses must use a neutral confirmation message to reduce user-enumeration risk
+- For local development only, a guarded auth bypass may be enabled via environment configuration to impersonate an active provisioned user by role
+- Dev bypass must remain disabled in production and must not replace Auth.js authentication in deployed environments
 
 ---
 
@@ -210,3 +212,4 @@ The following may be required if the system evolves:
 - All data access must be scoped by organization_id
 - HTTPS must always be used
 - Secrets must never be exposed
+- Development-only auth bypass controls must be disabled in production

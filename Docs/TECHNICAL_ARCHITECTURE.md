@@ -98,6 +98,7 @@ OpsScheduler is a single application with the following components:
 - Sign-in allowed only for active users already provisioned in database
 - Session access is revalidated against current user activity status
 - Auth endpoint uses request rate limiting for abuse protection
+- Optional development-only bypass can auto-authenticate an active admin or user via environment switch (disabled in production)
 
 ---
 
@@ -113,7 +114,7 @@ OpsScheduler is a single application with the following components:
 
 ### Application
 
-- Runs directly on host (Node.js 22 LTS)
+- Runs directly on host (Node.js 24 LTS)
 - Managed via process manager (e.g. PM2)
 
 ### Database
@@ -151,6 +152,12 @@ Seed configuration variables:
 - SEED_ORGANIZATION_NAME
 - SEED_ADMIN_EMAIL
 
+Optional development-only auth bypass variables:
+
+- AUTH_DEV_BYPASS_MODE (`off`, `admin`, `user`)
+- AUTH_DEV_BYPASS_ADMIN_EMAIL (optional explicit active admin email)
+- AUTH_DEV_BYPASS_USER_EMAIL (optional explicit active user email)
+
 Additional variables may be added as needed.
 
 Prisma configuration notes:
@@ -160,7 +167,7 @@ Prisma configuration notes:
 
 Tooling baseline for MVP:
 
-- Runtime: Node.js 22 LTS
+- Runtime: Node.js 24 LTS
 - Package manager: pnpm
 
 Database bootstrap for MVP:

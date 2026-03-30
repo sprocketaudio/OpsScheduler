@@ -558,6 +558,26 @@ Used for:
 
 ---
 
+### Test: Dev auth bypass role mode (local only)
+- Set `AUTH_DEV_BYPASS_MODE=admin` or `AUTH_DEV_BYPASS_MODE=user` in local `.env`
+- Ensure at least one matching active user exists
+- Access a protected route without completing magic-link login
+
+### Expected Result
+- Route access is granted using the selected role mode
+- Data access remains organization-scoped
+
+---
+
+### Test: Dev auth bypass is blocked in production
+- Set `AUTH_DEV_BYPASS_MODE=admin` with `NODE_ENV=production`
+- Attempt to start and access protected routes
+
+### Expected Result
+- Application fails fast with a clear configuration error
+
+---
+
 ## 6. Regression Focus Areas
 
 The following areas must be re-tested after any meaningful change:

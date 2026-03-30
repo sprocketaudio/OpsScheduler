@@ -1,43 +1,162 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { SchedulerCalendar } from "@/features/scheduler/calendar-view";
+import {
+  addDaysUtc,
+  formatIsoDateUtc,
+  formatWeekCommencingLabel,
+  parseWeekParamToMondayUtc,
+  startOfWeekMondayUtc,
+} from "@/features/scheduler/week";
 import { getServerAuthSession } from "@/server/auth/session";
+import { prisma } from "@/server/db/client";
 
-const WEEKDAY_LABELS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-] as const;
+type DashboardPageProps = {
+  searchParams?: Promise<{
+    week?: string;
+  }>;
+};
 
-function getWeekCommencingLabel(referenceDate: Date): string {
-  const monday = new Date(referenceDate);
-  const day = monday.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
+type CalendarEvent = {
+  allDay: boolean;
+  backgroundColor?: string;
+  borderColor?: string;
+  end?: string;
+  id: string;
+  start: string;
+  title: string;
+};
 
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(monday.getDate() + diffToMonday);
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(monday);
+function combineDateAndTime(dateValue: Date, timeValue: Date): string {
+  const dateIso = formatIsoDateUtc(dateValue);
+  const hours = String(timeValue.getUTCHours()).padStart(2, "0");
+  const minutes = String(timeValue.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(timeValue.getUTCSeconds()).padStart(2, "0");
+  return `${dateIso}T${hours}:${minutes}:${seconds}`;
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await getServerAuthSession();
 
   if (!session) {
     redirect("/login?callbackUrl=/dashboard");
   }
 
-  const weekLabel = getWeekCommencingLabel(new Date());
+  const params = (await searchParams) ?? {};
+  const currentWeekStart = startOfWeekMondayUtc(new Date());
+  const selectedWeekStart = parseWeekParamToMondayUtc(params.week) ?? currentWeekStart;
+  const selectedWeekEnd = addDaysUtc(selectedWeekStart, 6);
+  const weekLabel = formatWeekCommencingLabel(selectedWeekStart);
+
+  const currentUser = await prisma.user.findUnique({
+    where: {
+      id: session.user.id,
+    },
+    select: {
+      email: true,
+      organizationId: true,
+    },
+  });
+
+  if (!currentUser) {
+    redirect("/login?callbackUrl=/dashboard");
+  }
+
+  const [bucketItems, scheduledItems] = await Promise.all([
+    prisma.workItem.findMany({
+      where: {
+        organizationId: currentUser.organizationId,
+        startDate: null,
+        targetWeek: selectedWeekStart,
+      },
+      orderBy: [{ done: "asc" }, { fixed: "desc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        customer: true,
+        done: true,
+        fixed: true,
+      },
+    }),
+    prisma.workItem.findMany({
+      where: {
+        organizationId: currentUser.organizationId,
+        startDate: {
+          not: null,
+          lte: selectedWeekEnd,
+        },
+        OR: [
+          {
+            endDate: null,
+          },
+          {
+            endDate: {
+              gte: selectedWeekStart,
+            },
+          },
+        ],
+      },
+      orderBy: [{ startDate: "asc" }, { startTime: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        title: true,
+        customer: true,
+        startDate: true,
+        endDate: true,
+        startTime: true,
+        endTime: true,
+        assignee: {
+          select: {
+            colour: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  const calendarEvents: CalendarEvent[] = [];
+  for (const item of scheduledItems) {
+    if (!item.startDate) {
+      continue;
+    }
+
+    const eventTitle = item.customer ? `${item.title} - ${item.customer}` : item.title;
+    const assigneeColour = item.assignee?.colour;
+
+    if (item.startTime) {
+      calendarEvents.push({
+        id: item.id,
+        title: eventTitle,
+        allDay: false,
+        start: combineDateAndTime(item.startDate, item.startTime),
+        end: item.endTime
+          ? combineDateAndTime(item.endDate ?? item.startDate, item.endTime)
+          : undefined,
+        backgroundColor: assigneeColour ?? undefined,
+        borderColor: assigneeColour ?? undefined,
+      });
+      continue;
+    }
+
+    calendarEvents.push({
+      id: item.id,
+      title: eventTitle,
+      allDay: true,
+      start: formatIsoDateUtc(item.startDate),
+      end: item.endDate ? formatIsoDateUtc(addDaysUtc(item.endDate, 1)) : undefined,
+      backgroundColor: assigneeColour ?? undefined,
+      borderColor: assigneeColour ?? undefined,
+    });
+  }
+
+  const previousWeekHref = `/dashboard?week=${formatIsoDateUtc(addDaysUtc(selectedWeekStart, -7))}`;
+  const currentWeekHref = `/dashboard?week=${formatIsoDateUtc(currentWeekStart)}`;
+  const nextWeekHref = `/dashboard?week=${formatIsoDateUtc(addDaysUtc(selectedWeekStart, 7))}`;
 
   return (
     <main className="min-h-screen">
@@ -48,33 +167,35 @@ export default async function DashboardPage() {
               <p className="text-sm text-muted-foreground">OpsScheduler</p>
               <h1 className="text-xl font-semibold">Week commencing {weekLabel}</h1>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" disabled>
-                Previous week
-              </Button>
-              <Button type="button" variant="outline" disabled>
-                Current week
-              </Button>
-              <Button type="button" variant="outline" disabled>
-                Next week
-              </Button>
-            </div>
+            <p className="text-sm text-muted-foreground">Signed in as {currentUser.email}</p>
           </div>
 
-          <div className="grid gap-2 md:grid-cols-[1fr_auto_auto_auto]">
-            <Input type="search" placeholder="Search title, customer, notes" disabled />
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="search"
+              placeholder="Search title, customer, notes"
+              disabled
+              className="min-w-[260px] flex-1"
+            />
+            <Link href={previousWeekHref} className={buttonVariants({ variant: "outline" })}>
+              Previous week
+            </Link>
+            <Link href={currentWeekHref} className={buttonVariants({ variant: "outline" })}>
+              Current week
+            </Link>
+            <Link href={nextWeekHref} className={buttonVariants({ variant: "outline" })}>
+              Next week
+            </Link>
             <Button type="button" variant="outline" disabled>
               My Items
             </Button>
             <Button type="button" variant="outline" disabled>
               Fixed Items
             </Button>
-            <div className="flex items-center justify-end gap-2">
-              <Button type="button" variant="outline" disabled>
-                Profile
-              </Button>
-              <SignOutButton />
-            </div>
+            <Button type="button" variant="outline" disabled>
+              Profile
+            </Button>
+            <SignOutButton />
           </div>
         </div>
       </header>
@@ -83,52 +204,47 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Weekly Calendar View</CardTitle>
-            <CardDescription>Monday to Sunday calendar area with all-day and timed sections.</CardDescription>
+            <CardDescription>
+              Scheduled items for the selected week ({calendarEvents.length}).
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-2 md:grid-cols-7">
-              {WEEKDAY_LABELS.map((label) => (
-                <div key={label} className="rounded-md border p-2">
-                  <p className="text-sm font-medium">{label}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-md border p-3">
-              <p className="text-sm font-medium">All-day area</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Placeholder for all-day and multi-day scheduling rows.
-              </p>
-            </div>
-
-            <div className="rounded-md border p-3">
-              <p className="text-sm font-medium">Time grid area</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Placeholder for timed scheduling rows.
-              </p>
-            </div>
+          <CardContent>
+            <SchedulerCalendar
+              events={calendarEvents}
+              weekStartIso={formatIsoDateUtc(selectedWeekStart)}
+            />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Weekly Bucket</CardTitle>
-            <CardDescription>Unscheduled items for the selected target week.</CardDescription>
+            <CardDescription>Unscheduled items for this target week ({bucketItems.length}).</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="rounded-md border p-3">
-              <p className="text-sm font-medium">Bucket list area</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Placeholder for unscheduled items scoped to the selected week.
-              </p>
-            </div>
-            <div className="rounded-md border p-3">
-              <p className="text-sm font-medium">Quick add area</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Placeholder for quick item creation controls.
-              </p>
-            </div>
-            <p className="mt-3 text-sm text-muted-foreground">Signed in as {session.user.email}</p>
+            {bucketItems.length > 0 ? (
+              <div className="space-y-2">
+                {bucketItems.map((item) => (
+                  <div key={item.id} className="rounded-md border p-3">
+                    <p className="text-sm font-medium">{item.title}</p>
+                    {item.customer ? (
+                      <p className="text-sm text-muted-foreground">Customer: {item.customer}</p>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      {item.fixed ? <span>Fixed</span> : null}
+                      {item.done ? <span>Done</span> : null}
+                      {!item.fixed && !item.done ? <span>Open</span> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md border p-3">
+                <p className="text-sm text-muted-foreground">
+                  No unscheduled items in the bucket for this week.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>

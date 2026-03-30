@@ -33,6 +33,7 @@ The top bar must include:
   - My Items
   - Fixed Items
 - User profile / settings access
+- Signed-in user identity display (email or display name)
 - Optional display of organisation name in a non-interactive format
 
 ---

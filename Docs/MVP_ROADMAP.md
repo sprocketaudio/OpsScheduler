@@ -32,7 +32,7 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Configure environment
 
 ### Tasks
-- Create Next.js project with TypeScript using Node.js 22 LTS and pnpm
+- Create Next.js project with TypeScript using Node.js 24 LTS and pnpm
 - Install:
   - Prisma
   - PostgreSQL client
@@ -140,6 +140,9 @@ This phase is not complete until it satisfies the Definition of Done in AGENTS.m
 ---
 
 ## 7. Phase 5: Calendar and Bucket (Read-Only)
+
+### Status
+- Completed on March 30, 2026
 
 ### Objectives
 - Display data in UI

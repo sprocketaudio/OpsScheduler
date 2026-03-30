@@ -46,7 +46,7 @@ AI implementation rules are defined separately:
 
 ### Prerequisites
 
-- Node.js 22 LTS
+- Node.js 24 LTS
 - PostgreSQL
 - pnpm
 
@@ -79,7 +79,7 @@ pnpm prisma:validate
 pnpm dev
 ```
 
-Note: Phase 4 basic UI shell is implemented. Calendar and bucket remain placeholder-only until later phases.
+Note: Phase 5 read-only calendar and bucket views are implemented with week-scoped DB data. Item creation and drag-and-drop scheduling are implemented in later phases.
 
 ---
 
@@ -103,6 +103,18 @@ Seed variables:
 
 - SEED_ORGANIZATION_NAME  
 - SEED_ADMIN_EMAIL  
+
+Optional development-only auth bypass variables:
+
+- AUTH_DEV_BYPASS_MODE (`off`, `admin`, `user`)  
+- AUTH_DEV_BYPASS_ADMIN_EMAIL (optional explicit active admin email)  
+- AUTH_DEV_BYPASS_USER_EMAIL (optional explicit active user email)  
+
+Notes:
+
+- Keep `AUTH_DEV_BYPASS_MODE=off` for normal magic-link authentication.
+- If bypass mode is enabled, the app auto-authenticates an active database user by role.
+- Bypass mode is blocked in production.
 
 ---
 

@@ -125,7 +125,7 @@ If uncertain, choose the safest implementation.
 
 AI must:
 
-- Use Node.js 22 LTS and pnpm for project tooling  
+- Use Node.js 24 LTS and pnpm for project tooling  
 - Use latest stable versions at time of implementation  
 - Verify latest stable package versions at implementation time and pin exact versions in package.json and lockfile  
 - Avoid alpha, beta, canary, or experimental releases  
