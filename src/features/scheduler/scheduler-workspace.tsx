@@ -1,21 +1,26 @@
 "use client";
 
 import type { EventInput } from "@fullcalendar/core";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { BucketPanel, type BucketPanelItem } from "@/features/scheduler/bucket-panel";
 import { SchedulerCalendar } from "@/features/scheduler/calendar-view";
 import { addDaysUtc, formatIsoDateUtc, parseWeekParamToMondayUtc, startOfWeekMondayUtc } from "@/features/scheduler/week";
 import type { DateLocale } from "@/features/settings/date-locale";
 import { ItemDetailPanel } from "@/features/scheduler/item-detail-panel";
+import { cn } from "@/lib/utils";
 
 type SchedulerWorkspaceProps = {
   bucketItems: BucketPanelItem[];
   calendarEvents: EventInput[];
   dateLocale: DateLocale;
+  matchDateIsos: string[];
+  matchWeekIsos: string[];
+  mineActive: boolean;
+  searchActive: boolean;
   visibleEndTime: string;
   visibleStartTime: string;
   weekStartIso: string;
@@ -41,11 +46,16 @@ export function SchedulerWorkspace({
   bucketItems,
   calendarEvents,
   dateLocale,
+  matchDateIsos,
+  matchWeekIsos,
+  mineActive,
+  searchActive,
   visibleEndTime,
   visibleStartTime,
   weekStartIso,
 }: SchedulerWorkspaceProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const selectedWeekStart = parseWeekParamToMondayUtc(weekStartIso) ?? startOfWeekMondayUtc(new Date());
   const previousWeekIso = formatIsoDateUtc(addDaysUtc(selectedWeekStart, -7));
   const currentWeekIso = formatIsoDateUtc(startOfWeekMondayUtc(new Date()));
@@ -56,7 +66,11 @@ export function SchedulerWorkspace({
   const [scheduleSync, setScheduleSync] = useState<(ScheduleSyncPayload & { seq: number }) | null>(null);
   const [statusSync, setStatusSync] = useState<(StatusSyncPayload & { seq: number }) | null>(null);
   const selectedItemIdRef = useRef<string | null>(selectedItemId);
-
+  const matchWeekSet = useMemo(() => new Set(matchWeekIsos), [matchWeekIsos]);
+  const previousWeekHasSearchMatch = searchActive && matchWeekSet.has(previousWeekIso);
+  const currentWeekHasSearchMatch = searchActive && matchWeekSet.has(currentWeekIso);
+  const nextWeekHasSearchMatch = searchActive && matchWeekSet.has(nextWeekIso);
+  const anyWeekHasSearchMatch = searchActive && matchWeekIsos.length > 0;
   useEffect(() => {
     setWeekJumpDate(weekStartIso);
   }, [weekStartIso]);
@@ -88,7 +102,9 @@ export function SchedulerWorkspace({
   }, []);
 
   function navigateToWeek(weekIso: string) {
-    router.push(`/dashboard?week=${weekIso}`);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("week", weekIso);
+    router.push(`/dashboard?${nextParams.toString()}`);
   }
 
   function handleWeekJumpChange(value: string) {
@@ -109,21 +125,50 @@ export function SchedulerWorkspace({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <CardTitle>Weekly Calendar View</CardTitle>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => navigateToWeek(previousWeekIso)}>
-                  Previous week
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigateToWeek(previousWeekIso)}
+                  className={cn(
+                    searchActive && previousWeekHasSearchMatch
+                      ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+                      : "",
+                  )}
+                >
+                  Previous
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => navigateToWeek(currentWeekIso)}>
-                  Current week
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigateToWeek(currentWeekIso)}
+                  className={cn(
+                    searchActive && currentWeekHasSearchMatch
+                      ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+                      : "",
+                  )}
+                >
+                  Current
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => navigateToWeek(nextWeekIso)}>
-                  Next week
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigateToWeek(nextWeekIso)}
+                  className={cn(
+                    searchActive && nextWeekHasSearchMatch
+                      ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+                      : "",
+                  )}
+                >
+                  Next
                 </Button>
-                <Input
-                  type="date"
-                  value={weekJumpDate}
-                  onChange={(event) => handleWeekJumpChange(event.target.value)}
-                  className="h-8 w-[9.5rem]"
-                  aria-label="Jump to week by date"
+                <DatePicker
+                  ariaLabel="Jump to week by date"
+                  valueIso={weekJumpDate}
+                  onChangeIso={handleWeekJumpChange}
+                  dateLocale={dateLocale}
+                  highlightedDateIsos={searchActive ? matchDateIsos : []}
+                  highlightControl={searchActive && anyWeekHasSearchMatch}
+                  showClearAction={false}
                 />
               </div>
             </div>
@@ -135,6 +180,8 @@ export function SchedulerWorkspace({
             <SchedulerCalendar
               events={calendarEvents}
               dateLocale={dateLocale}
+              mineActive={mineActive}
+              searchActive={searchActive}
               visibleEndTime={visibleEndTime}
               visibleStartTime={visibleStartTime}
               weekStartIso={weekStartIso}
@@ -157,6 +204,8 @@ export function SchedulerWorkspace({
           <CardContent className="flex min-h-0 flex-1 flex-col">
             <BucketPanel
               items={bucketItems}
+              mineActive={mineActive}
+              searchActive={searchActive}
               targetWeekIso={weekStartIso}
               onItemSelect={handleItemSelect}
             />
@@ -165,6 +214,7 @@ export function SchedulerWorkspace({
       </section>
 
       <ItemDetailPanel
+        dateLocale={dateLocale}
         itemId={selectedItemId}
         refreshToken={panelRefreshToken}
         scheduleSync={scheduleSync}

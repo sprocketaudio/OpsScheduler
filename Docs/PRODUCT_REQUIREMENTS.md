@@ -112,7 +112,6 @@ The intended workflow is:
 - Fast lightweight search
 - Search across title, customer, and notes
 - Filter to show only current user's items
-- Optional filter to show Fixed items only
 
 ### User and Access
 - Approved users only

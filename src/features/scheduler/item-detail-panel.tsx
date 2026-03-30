@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
+import type { DateLocale } from "@/features/settings/date-locale";
 
 type ItemDetailResponse = {
   item: {
@@ -31,6 +33,7 @@ type ItemDetailResponse = {
 };
 
 type ItemDetailPanelProps = {
+  dateLocale: DateLocale;
   itemId: string | null;
   onClose: () => void;
   onStatusSync?: (payload: {
@@ -153,6 +156,7 @@ function validateDraft(draft: ItemDraft): string | null {
 }
 
 export function ItemDetailPanel({
+  dateLocale,
   itemId,
   onClose,
   onStatusSync,
@@ -673,12 +677,13 @@ export function ItemDetailPanel({
                   <label htmlFor="item-start-date" className="text-sm font-medium">
                     Start date
                   </label>
-                  <Input
-                    id="item-start-date"
-                    type="date"
-                    value={startDate}
-                    onChange={(event) => handleStartDateChange(event.target.value)}
+                  <DatePicker
+                    ariaLabel="Start date"
+                    valueIso={startDate}
+                    onChangeIso={handleStartDateChange}
+                    dateLocale={dateLocale}
                     disabled={isLoading}
+                    fullWidth
                   />
                 </div>
                 <div className="grid gap-1.5">
@@ -698,19 +703,19 @@ export function ItemDetailPanel({
                   <label htmlFor="item-end-date" className="text-sm font-medium">
                     End date
                   </label>
-                  <Input
-                    id="item-end-date"
-                    type="date"
-                    value={effectiveEndDate}
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
+                  <DatePicker
+                    ariaLabel="End date"
+                    valueIso={effectiveEndDate}
+                    onChangeIso={(nextValue) => {
                       if (!startDate || !nextValue || nextValue === startDate) {
                         setEndDate("");
                         return;
                       }
                       setEndDate(nextValue);
                     }}
+                    dateLocale={dateLocale}
                     disabled={isLoading || !startDate}
+                    fullWidth
                   />
                 </div>
                 <div className="grid gap-1.5">

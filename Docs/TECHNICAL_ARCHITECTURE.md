@@ -65,6 +65,9 @@ OpsScheduler is a single application with the following components:
 
 - shadcn/ui for base components
 - Tailwind CSS for styling
+- MUI X Date Pickers for shared calendar picker controls
+- MUI Material + Emotion runtime for picker rendering
+- date-fns for picker date adapter and locale formatting
 
 ### Calendar and Interaction
 
@@ -265,6 +268,11 @@ Core dependencies:
 - dnd-kit
 - shadcn/ui
 - Tailwind CSS
+- @mui/x-date-pickers
+- @mui/material
+- @emotion/react
+- @emotion/styled
+- date-fns
 
 ---
 

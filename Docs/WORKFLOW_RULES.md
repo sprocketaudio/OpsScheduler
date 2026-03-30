@@ -221,10 +221,10 @@ Complete indicates the work has been completed.
 ### Search
 - Search is real-time
 - Matches title, customer, and notes
+- Search does not remove non-matching items; non-matches are dimmed while matches stay prominent
 
 ### Filters
-- My Items filter shows only items assigned to current user
-- Fixed filter shows only fixed items
+- My Items filter keeps all items visible while dimming non-assigned items
 - Filters do not modify data, only visibility
 
 ---

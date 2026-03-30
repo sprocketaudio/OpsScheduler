@@ -248,7 +248,8 @@ Used for:
 - Return to dashboard
 
 ### Expected Result
-- Calendar time grid updates to the selected window
+- Calendar initially opens with viewport focused on the selected start time and sized to the selected start/end window
+- Calendar time grid remains scrollable to full-day bounds (00:00 through end of day)
 - Saved window persists across week navigation and session refresh
 
 ---
@@ -522,8 +523,8 @@ Used for:
 - Search using part of item title
 
 ### Expected Result
-- Matching items appear
-- Non-matching items are hidden
+- Matching items remain prominent
+- Non-matching items stay visible but are dimmed
 
 ---
 
@@ -531,7 +532,8 @@ Used for:
 - Search using customer text
 
 ### Expected Result
-- Matching items appear
+- Matching items remain prominent
+- Non-matching items stay visible but are dimmed
 
 ---
 
@@ -539,7 +541,23 @@ Used for:
 - Search using notes content
 
 ### Expected Result
-- Matching items appear
+- Matching items remain prominent
+- Non-matching items stay visible but are dimmed
+
+---
+
+### Test: Search highlights week navigation controls
+- Enter search text that has matches in previous and/or next week
+- Open the calendar date picker control and switch between day/month/year views
+
+### Expected Result
+- Previous/Current/Next week button is highlighted when that week has matches
+- Date picker control is highlighted when any week has matches
+- Date picker popover is highlighted when any matches exist
+- Date picker day cells highlight matching dates
+- Date picker month and year views highlight months/years containing matches
+- Date picker month/year header is highlighted
+- Date picker previous/next month arrows highlight when direct adjacent month contains matches
 
 ---
 
@@ -548,16 +566,8 @@ Used for:
 - Enable My Items filter
 
 ### Expected Result
-- Only items assigned to current user appear
-
----
-
-### Test: Fixed filter
-- Mix Fixed and non-Fixed items
-- Enable Fixed filter
-
-### Expected Result
-- Only Fixed items appear
+- Items assigned to current user remain prominent
+- Items assigned to other users remain visible but are dimmed
 
 ---
 

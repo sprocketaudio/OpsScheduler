@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { Input } from "@/components/ui/input";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { DashboardFilters } from "@/features/scheduler/dashboard-filters";
 import { SchedulerWorkspace } from "@/features/scheduler/scheduler-workspace";
 import { resolveVisibleWindow } from "@/features/scheduler/visible-window";
 import { normalizeDateLocale } from "@/features/settings/date-locale";
@@ -19,6 +19,8 @@ import { prisma } from "@/server/db/client";
 
 type DashboardPageProps = {
   searchParams?: Promise<{
+    mine?: string;
+    q?: string;
     week?: string;
   }>;
 };
@@ -33,6 +35,8 @@ type CalendarEvent = {
     customer?: string | null;
     done: boolean;
     fixed: boolean;
+    matchesMine?: boolean;
+    matchesSearch?: boolean;
     onHold: boolean;
     notes?: string | null;
   };
@@ -40,6 +44,81 @@ type CalendarEvent = {
   start: string;
   title: string;
 };
+
+function buildWeekVisibleItemsWhere(weekStart: Date, weekEnd: Date): Prisma.WorkItemWhereInput {
+  return {
+    OR: [
+      {
+        startDate: null,
+        targetWeek: weekStart,
+      },
+      {
+        startDate: {
+          not: null,
+          lte: weekEnd,
+        },
+        OR: [
+          {
+            endDate: {
+              gte: weekStart,
+            },
+          },
+          {
+            endDate: null,
+            startDate: {
+              gte: weekStart,
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function collectMatchingWeekIsos(items: Array<{ endDate: Date | null; startDate: Date | null; targetWeek: Date }>): string[] {
+  const weekIsos = new Set<string>();
+
+  for (const item of items) {
+    if (!item.startDate) {
+      weekIsos.add(formatIsoDateUtc(item.targetWeek));
+      continue;
+    }
+
+    const effectiveEndDate = item.endDate ?? item.startDate;
+    let cursor = startOfWeekMondayUtc(item.startDate);
+    const finalWeek = startOfWeekMondayUtc(effectiveEndDate);
+
+    while (cursor.getTime() <= finalWeek.getTime()) {
+      weekIsos.add(formatIsoDateUtc(cursor));
+      cursor = addDaysUtc(cursor, 7);
+    }
+  }
+
+  return Array.from(weekIsos).sort();
+}
+
+function collectMatchingDateIsos(items: Array<{ endDate: Date | null; startDate: Date | null; targetWeek: Date }>): string[] {
+  const dateIsos = new Set<string>();
+
+  for (const item of items) {
+    if (!item.startDate) {
+      for (let offset = 0; offset < 7; offset += 1) {
+        dateIsos.add(formatIsoDateUtc(addDaysUtc(item.targetWeek, offset)));
+      }
+      continue;
+    }
+
+    const effectiveEndDate = item.endDate ?? item.startDate;
+    let cursor = item.startDate;
+
+    while (cursor.getTime() <= effectiveEndDate.getTime()) {
+      dateIsos.add(formatIsoDateUtc(cursor));
+      cursor = addDaysUtc(cursor, 1);
+    }
+  }
+
+  return Array.from(dateIsos).sort();
+}
 
 function combineDateAndTime(dateValue: Date, timeValue: Date): string {
   const dateIso = formatIsoDateUtc(dateValue);
@@ -57,6 +136,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   const params = (await searchParams) ?? {};
+  const searchQuery = typeof params.q === "string" ? params.q.trim().slice(0, 200) : "";
+  const normalizedSearch = searchQuery.toLowerCase();
+  const myItemsOnly = params.mine === "1";
   const currentWeekStart = startOfWeekMondayUtc(new Date());
   const selectedWeekStart = parseWeekParamToMondayUtc(params.week) ?? currentWeekStart;
   const selectedWeekEnd = addDaysUtc(selectedWeekStart, 6);
@@ -79,6 +161,39 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
   const dateLocale = normalizeDateLocale(currentUser.dateLocale);
   const weekLabel = formatWeekCommencingLabel(selectedWeekStart, dateLocale);
+  const searchFilters: Prisma.WorkItemWhereInput[] = [];
+  const mineSearchFilters: Prisma.WorkItemWhereInput[] = myItemsOnly
+    ? [
+        {
+          assigneeId: session.user.id,
+        },
+      ]
+    : [];
+
+  if (normalizedSearch) {
+    searchFilters.push({
+      OR: [
+        {
+          title: {
+            contains: normalizedSearch,
+            mode: "insensitive",
+          },
+        },
+        {
+          customer: {
+            contains: normalizedSearch,
+            mode: "insensitive",
+          },
+        },
+        {
+          notes: {
+            contains: normalizedSearch,
+            mode: "insensitive",
+          },
+        },
+      ],
+    });
+  }
 
   const [bucketItems, scheduledItems] = await Promise.all([
     prisma.workItem.findMany({
@@ -92,10 +207,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         id: true,
         title: true,
         customer: true,
+        notes: true,
         done: true,
         fixed: true,
         onHold: true,
         cancelled: true,
+        assigneeId: true,
         assignee: {
           select: {
             colour: true,
@@ -108,20 +225,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     prisma.workItem.findMany({
       where: {
         organizationId: currentUser.organizationId,
+        ...buildWeekVisibleItemsWhere(selectedWeekStart, selectedWeekEnd),
         startDate: {
           not: null,
-          lte: selectedWeekEnd,
         },
-        OR: [
-          {
-            endDate: null,
-          },
-          {
-            endDate: {
-              gte: selectedWeekStart,
-            },
-          },
-        ],
       },
       orderBy: [{ startDate: "asc" }, { startTime: "asc" }, { createdAt: "asc" }],
       select: {
@@ -133,6 +240,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         endDate: true,
         startTime: true,
         endTime: true,
+        assigneeId: true,
         fixed: true,
         onHold: true,
         cancelled: true,
@@ -146,11 +254,44 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     }),
   ]);
 
+  let matchWeekIsos: string[] = [];
+  let matchDateIsos: string[] = [];
+
+  if (searchFilters.length > 0) {
+    const sharedSearchScope: Prisma.WorkItemWhereInput[] = [
+      {
+        organizationId: currentUser.organizationId,
+      },
+      ...mineSearchFilters,
+      ...searchFilters,
+    ];
+
+    const matchingItems = await prisma.workItem.findMany({
+      where: {
+        AND: sharedSearchScope,
+      },
+      select: {
+        startDate: true,
+        endDate: true,
+        targetWeek: true,
+      },
+    });
+
+    matchWeekIsos = collectMatchingWeekIsos(matchingItems);
+    matchDateIsos = collectMatchingDateIsos(matchingItems);
+  }
+
   const calendarEvents: CalendarEvent[] = [];
   for (const item of scheduledItems) {
     if (!item.startDate) {
       continue;
     }
+    const matchesSearch =
+      !normalizedSearch ||
+      item.title.toLowerCase().includes(normalizedSearch) ||
+      (item.customer ?? "").toLowerCase().includes(normalizedSearch) ||
+      (item.notes ?? "").toLowerCase().includes(normalizedSearch);
+    const matchesMine = !myItemsOnly || item.assigneeId === session.user.id;
 
     const assigneeColour = item.assignee?.colour;
 
@@ -170,6 +311,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           onHold: item.onHold,
           cancelled: item.cancelled,
           done: item.done,
+          matchesMine,
+          matchesSearch,
           customer: item.customer,
           notes: item.notes,
         },
@@ -190,6 +333,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         onHold: item.onHold,
         cancelled: item.cancelled,
         done: item.done,
+        matchesMine,
+        matchesSearch,
         customer: item.customer,
         notes: item.notes,
       },
@@ -214,18 +359,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Input
-              type="search"
-              placeholder="Search title, customer, notes"
-              disabled
-              className="min-w-[260px] flex-1"
-            />
-            <Button type="button" variant="outline" disabled>
-              My Items
-            </Button>
-            <Button type="button" variant="outline" disabled>
-              Fixed Items
-            </Button>
+            <DashboardFilters initialSearch={searchQuery} myItemsOnly={myItemsOnly} />
             <Link href="/settings" className={buttonVariants({ variant: "outline" })}>
               Profile
             </Link>
@@ -235,9 +369,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </header>
 
       <SchedulerWorkspace
-        bucketItems={bucketItems}
+        bucketItems={bucketItems.map((item) => ({
+          ...item,
+          matchesMine: !myItemsOnly || item.assigneeId === session.user.id,
+          matchesSearch:
+            !normalizedSearch ||
+            item.title.toLowerCase().includes(normalizedSearch) ||
+            (item.customer ?? "").toLowerCase().includes(normalizedSearch) ||
+            (item.notes ?? "").toLowerCase().includes(normalizedSearch),
+        }))}
         calendarEvents={calendarEvents}
         dateLocale={dateLocale}
+        matchDateIsos={matchDateIsos}
+        matchWeekIsos={matchWeekIsos}
+        mineActive={myItemsOnly}
+        searchActive={searchQuery.length > 0}
         visibleEndTime={visibleEndTime}
         visibleStartTime={visibleStartTime}
         weekStartIso={formatIsoDateUtc(selectedWeekStart)}

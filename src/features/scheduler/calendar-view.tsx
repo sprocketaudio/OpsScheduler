@@ -12,11 +12,12 @@ import enGbLocale from "@fullcalendar/core/locales/en-gb";
 import interactionPlugin, { type DateClickArg } from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dynamic from "next/dynamic";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { DateLocale } from "@/features/settings/date-locale";
+import { toSeconds } from "@/features/scheduler/visible-window";
 
 const FullCalendar = dynamic(() => import("@fullcalendar/react"), {
   ssr: false,
@@ -25,6 +26,7 @@ const FullCalendar = dynamic(() => import("@fullcalendar/react"), {
 type SchedulerCalendarProps = {
   dateLocale: DateLocale;
   events: EventInput[];
+  mineActive?: boolean;
   onItemSelect?: (itemId: string) => void;
   onScheduleSync?: (payload: {
     endDate: string;
@@ -41,6 +43,7 @@ type SchedulerCalendarProps = {
     onHold: boolean;
     seq: number;
   } | null;
+  searchActive?: boolean;
   visibleEndTime: string;
   visibleStartTime: string;
   weekStartIso: string;
@@ -101,6 +104,8 @@ type EventVisualMeta = {
   done: boolean;
   end: Date | null;
   fixed: boolean;
+  matchesMine: boolean;
+  matchesSearch: boolean;
   notes: string | null;
   onHold: boolean;
   start: Date | null;
@@ -123,6 +128,11 @@ type EventTooltipState = {
 };
 
 const DEFAULT_TIMED_DURATION_MINUTES = 60;
+const CALENDAR_SLOT_DURATION_SECONDS = 30 * 60;
+const CALENDAR_SLOT_ROW_HEIGHT_PX = 24;
+const CALENDAR_CHROME_HEIGHT_PX = 112;
+const FULL_DAY_SLOT_MIN_TIME = "00:00:00";
+const FULL_DAY_SLOT_MAX_TIME = "24:00:00";
 
 type RgbColor = {
   blue: number;
@@ -251,10 +261,21 @@ function resolveVisualStatusColor(status: "cancelled" | "done" | "fixed" | "onHo
   return null;
 }
 
-function applyEventVisualStyles(element: HTMLElement, visualMeta: EventVisualMeta | null) {
+function applyEventVisualStyles(
+  element: HTMLElement,
+  visualMeta: EventVisualMeta | null,
+  options: {
+    mineActive: boolean;
+    searchActive: boolean;
+  },
+) {
   const status = visualMeta ? resolveVisualStatus(visualMeta) : "none";
   const statusColor = resolveVisualStatusColor(status);
-  const statusOpacity = status === "cancelled" ? "0.68" : status === "onHold" ? "0.82" : "1";
+  const statusOpacity = status === "cancelled" ? 0.68 : status === "onHold" ? 0.82 : 1;
+  const isSearchDimmed = options.searchActive && visualMeta?.matchesSearch === false;
+  const isMineDimmed = options.mineActive && visualMeta?.matchesMine === false;
+  const isFilterDimmed = isSearchDimmed || isMineDimmed;
+  const finalOpacity = isFilterDimmed ? Math.min(statusOpacity, 0.22) : statusOpacity;
   const innerEventElements = Array.from(
     element.querySelectorAll<HTMLElement>(".fc-event-main, .fc-event-main-frame"),
   );
@@ -276,7 +297,17 @@ function applyEventVisualStyles(element: HTMLElement, visualMeta: EventVisualMet
   element.style.setProperty("box-shadow", "none", "important");
   element.style.setProperty("outline", "none", "important");
   element.style.setProperty("outline-offset", "0", "important");
-  element.style.setProperty("opacity", statusOpacity, "important");
+  element.style.setProperty("opacity", String(finalOpacity), "important");
+  element.style.setProperty("filter", isFilterDimmed ? "saturate(0.35)" : "none", "important");
+  element.style.setProperty(
+    "z-index",
+    options.searchActive || options.mineActive
+      ? !isFilterDimmed
+        ? "40"
+        : "2"
+      : "2",
+    "important",
+  );
   element.style.setProperty("padding", "0", "important");
 
   innerEventElements.forEach((innerElement) => {
@@ -370,6 +401,15 @@ function parseDateInput(value: unknown): Date | null {
   }
 
   return null;
+}
+
+function computeCalendarViewportHeight(visibleStartTime: string, visibleEndTime: string): number {
+  const visibleSeconds = Math.max(
+    CALENDAR_SLOT_DURATION_SECONDS,
+    toSeconds(visibleEndTime) - toSeconds(visibleStartTime),
+  );
+  const visibleSlotRows = Math.ceil(visibleSeconds / CALENDAR_SLOT_DURATION_SECONDS);
+  return visibleSlotRows * CALENDAR_SLOT_ROW_HEIGHT_PX + CALENDAR_CHROME_HEIGHT_PX;
 }
 
 function formatTooltipTimeLine(
@@ -535,6 +575,8 @@ function buildVisualMetaFromEventInput(event: {
     customer?: string | null;
     done?: boolean;
     fixed?: boolean;
+    matchesMine?: boolean;
+    matchesSearch?: boolean;
     notes?: string | null;
     onHold?: boolean;
   };
@@ -551,6 +593,8 @@ function buildVisualMetaFromEventInput(event: {
     notes: typeof eventProps.notes === "string" ? eventProps.notes : null,
     done: eventProps.done === true,
     fixed: eventProps.fixed === true,
+    matchesMine: eventProps.matchesMine !== false,
+    matchesSearch: eventProps.matchesSearch !== false,
     onHold: eventProps.onHold === true,
     cancelled: eventProps.cancelled === true,
   };
@@ -611,6 +655,16 @@ function buildEventVisualMetaMap(events: EventInput[]): Map<string, EventVisualM
         onHold,
         cancelled,
         done,
+        matchesMine:
+          !eventExtendedProps ||
+          typeof eventExtendedProps !== "object" ||
+          !("matchesMine" in eventExtendedProps) ||
+          eventExtendedProps.matchesMine !== false,
+        matchesSearch:
+          !eventExtendedProps ||
+          typeof eventExtendedProps !== "object" ||
+          !("matchesSearch" in eventExtendedProps) ||
+          eventExtendedProps.matchesSearch !== false,
         allDay:
           ("allDay" in event && event.allDay === true) ||
           (!!eventExtendedProps && typeof eventExtendedProps === "object" && "allDay" in eventExtendedProps),
@@ -872,8 +926,10 @@ async function patchItemPlacement(
 export function SchedulerCalendar({
   dateLocale,
   events,
+  mineActive = false,
   onItemSelect,
   onScheduleSync,
+  searchActive = false,
   statusSync = null,
   visibleEndTime,
   visibleStartTime,
@@ -887,6 +943,10 @@ export function SchedulerCalendar({
   const [interactionError, setInteractionError] = useState<string | null>(null);
   const [hoverTooltip, setHoverTooltip] = useState<EventTooltipState | null>(null);
   const eventResizeObserversRef = useRef<WeakMap<HTMLElement, ResizeObserver>>(new WeakMap());
+  const calendarViewportHeight = useMemo(
+    () => computeCalendarViewportHeight(visibleStartTime, visibleEndTime),
+    [visibleEndTime, visibleStartTime],
+  );
 
   useEffect(() => {
     const visualMetaById = buildEventVisualMetaMap(events);
@@ -917,10 +977,13 @@ export function SchedulerCalendar({
         element.removeAttribute("title");
       }
 
-      applyEventVisualStyles(element, visualMeta);
+      applyEventVisualStyles(element, visualMeta, {
+        mineActive,
+        searchActive,
+      });
       applyEventDensityStyles(element);
     });
-  }, [dateLocale, events, statusSync]);
+  }, [dateLocale, events, mineActive, searchActive, statusSync]);
 
   useEffect(() => {
     const hoveredItemId = hoverTooltip?.itemId;
@@ -1190,7 +1253,10 @@ export function SchedulerCalendar({
     arg.el.dataset.schedulerEventId = String(arg.event.id);
     arg.el.setAttribute("aria-label", buildEventTooltip({ ...visualMeta, dateLocale }));
     arg.el.removeAttribute("title");
-    applyEventVisualStyles(arg.el, visualMeta);
+    applyEventVisualStyles(arg.el, visualMeta, {
+      mineActive,
+      searchActive,
+    });
     applyEventDensityStyles(arg.el);
 
     const existingObserver = eventResizeObserversRef.current.get(arg.el);
@@ -1326,8 +1392,8 @@ export function SchedulerCalendar({
         dayHeaderContent={(arg) => formatDayHeaderLabel(arg.date, dateLocale)}
         eventContent={renderEventContent}
         eventMinHeight={24}
-        slotMinTime={visibleStartTime}
-        slotMaxTime={visibleEndTime}
+        slotMinTime={FULL_DAY_SLOT_MIN_TIME}
+        slotMaxTime={FULL_DAY_SLOT_MAX_TIME}
         scrollTime={visibleStartTime}
         scrollTimeReset={false}
         dateClick={handleDateClick}
@@ -1342,7 +1408,7 @@ export function SchedulerCalendar({
         eventDragStart={handleEventDragStart}
         eventDragStop={handleEventDragStop}
         dragRevertDuration={0}
-        height="auto"
+        height={calendarViewportHeight}
         events={events}
       />
 

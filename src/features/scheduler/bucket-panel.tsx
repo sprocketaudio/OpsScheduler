@@ -15,13 +15,17 @@ export type BucketPanelItem = {
   done: boolean;
   fixed: boolean;
   id: string;
+  matchesMine?: boolean;
+  matchesSearch?: boolean;
   onHold: boolean;
   title: string;
 };
 
 type BucketPanelProps = {
   items: BucketPanelItem[];
+  mineActive?: boolean;
   onItemSelect?: (itemId: string) => void;
+  searchActive?: boolean;
   targetWeekIso: string;
 };
 
@@ -84,7 +88,13 @@ function resolveItemOpacityClass(status: BucketVisualStatus): string {
   return "";
 }
 
-export function BucketPanel({ items, onItemSelect, targetWeekIso }: BucketPanelProps) {
+export function BucketPanel({
+  items,
+  mineActive = false,
+  onItemSelect,
+  searchActive = false,
+  targetWeekIso,
+}: BucketPanelProps) {
   const draggableContainerRef = useRef<HTMLDivElement | null>(null);
   const pointerStartRef = useRef<{
     itemId: string;
@@ -178,6 +188,10 @@ export function BucketPanel({ items, onItemSelect, targetWeekIso }: BucketPanelP
         {items.length > 0 ? (
           items.map((item) => {
             const visualStatus = resolveItemVisualStatus(item);
+            const itemDimmedBySearch = searchActive && item.matchesSearch === false;
+            const itemDimmedByMine = mineActive && item.matchesMine === false;
+            const itemIsDimmed = itemDimmedBySearch || itemDimmedByMine;
+            const itemIsProminent = !itemIsDimmed && (searchActive || mineActive);
             return (
               <div
                 key={item.id}
@@ -191,6 +205,8 @@ export function BucketPanel({ items, onItemSelect, targetWeekIso }: BucketPanelP
                 onClick={() => handleItemClick(item.id)}
                 className={[
                   "cursor-grab rounded-md border p-3 active:cursor-grabbing [&_*]:cursor-inherit",
+                  itemIsDimmed ? "opacity-35 saturate-50" : "",
+                  itemIsProminent ? "relative z-40 ring-1 ring-primary/30" : "",
                   resolveItemOutlineClass(visualStatus),
                   resolveItemOpacityClass(visualStatus),
                 ].join(" ")}

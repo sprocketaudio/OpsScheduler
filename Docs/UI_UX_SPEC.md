@@ -28,7 +28,6 @@ The top bar must include:
 - Search input
 - Filter toggles:
   - My Items
-  - Fixed Items
 - User profile / settings access
 - Signed-in user identity display (email or display name)
 - Optional display of organisation name in a non-interactive format
@@ -47,6 +46,7 @@ Profile/Settings must include:
 - 7-day week view (Monday to Sunday)
 - Weekend days must be visible
 - Calendar time grid should default to a workday-focused visible window (08:00-20:00), user-adjustable in Profile/Settings
+- Time grid must remain vertically scrollable to the full-day range (00:00 through end of day) even when a narrower visible window is configured
 - Each day has:
   - All-day section (top)
   - Time grid (below)
@@ -146,6 +146,7 @@ Opening an item displays a panel (side or modal) with:
 - On hold toggle
 - Cancelled toggle
 - Complete toggle
+- Date fields must use the shared calendar picker component used by week navigation controls
 
 Planned additions in later phases:
 
@@ -261,10 +262,12 @@ Planned additions in later phases:
   - title
   - customer
   - notes
+- Matching items remain visually prominent
+- Non-matching items remain visible but dimmed
 
 ### Results
 
-- Filters visible items
+- Does not remove non-matching items from the view
 - Does not modify data
 
 ---
@@ -273,16 +276,14 @@ Planned additions in later phases:
 
 ### My Items
 
-- Shows only items assigned to current user
-
-### Fixed Only
-
-- Shows only fixed items
+- Items assigned to current user remain prominent
+- Items assigned to other users remain visible but dimmed
 
 ### Rules
 
 - Filters are toggleable
 - Filters affect visibility only
+- Active My Items button styling should use the same amber highlight palette used for active search state
 
 ---
 
@@ -293,6 +294,14 @@ Planned additions in later phases:
 - Date picker jump control in the calendar panel to select any date and navigate to that week
 - Calendar and bucket update together
 - Week/day labels and scheduler tooltip dates use the signed-in user's selected date locale
+- When search is active:
+  - Previous/Current/Next week controls are highlighted when matching items exist in those weeks
+  - Date picker control is highlighted when matching items exist in any week
+  - Date picker popover is highlighted when matches exist
+  - Date picker day cells highlight matching dates
+  - Date picker month and year views highlight months/years that contain matching dates
+  - Date picker month/year header is highlighted
+  - Date picker previous/next month arrow controls are highlighted when the direct adjacent month contains matches
 
 ---
 
