@@ -1,0 +1,283 @@
+# UI_UX_SPEC.md
+
+## 1. Purpose
+
+This document defines the user interface and interaction behaviour for OpsScheduler.
+
+The goal is to ensure the UI is fast, intuitive, and consistent with the current workflow, while improving usability over Outlook.
+
+All UI behaviour must follow this specification.
+
+---
+
+## 2. Core Layout
+
+The main screen consists of three primary areas:
+
+1. Top Navigation Bar
+2. Weekly Calendar View
+3. Weekly Bucket (unscheduled items)
+
+---
+
+## 3. Top Navigation Bar
+
+The top bar must include:
+
+- Current week display (e.g. "Week commencing 16 Jun 2026")
+- Previous week button
+- Next week button
+- "Today" or "Current Week" button
+- Search input
+- Filter toggles:
+  - My Items
+  - Fixed Items
+- User profile / settings access
+- Optional display of organisation name in a non-interactive format
+
+---
+
+## 4. Calendar View
+
+### Structure
+
+- 7-day week view (Monday to Sunday)
+- Weekend days must be visible
+- Each day has:
+  - All-day section (top)
+  - Time grid (below)
+
+### Behaviour
+
+- All-day section supports:
+  - single day items
+  - multi-day spanning items
+
+- Time grid supports:
+  - timed items
+  - drag and resize
+
+---
+
+## 5. Bucket (Unscheduled Items)
+
+### Structure
+
+- Displays items with no date/time
+- Scoped to selected week (target_week)
+- Appears either:
+  - above calendar, or
+  - in a side panel (implementation choice)
+
+### Behaviour
+
+- Items are listed vertically
+- Items can be dragged into calendar
+- Items remain until scheduled or deleted
+- Items automatically carry forward to next week
+
+---
+
+## 6. Work Item Display
+
+Each item must display:
+
+- Title (primary)
+- Customer (if present)
+- Assignee indicator:
+  - colour (background or border)
+  - optional initials/avatar
+- Fixed indicator (visual highlight, e.g. red)
+- Done indicator (faded or marked)
+
+### Visual Rules
+
+- Colour always represents assignee
+- Fixed must be visually distinct (e.g. red border or fill)
+- Done must appear faded or muted but still readable
+
+---
+
+## 7. Interaction Model
+
+### Click vs Drag
+
+- Click (no movement):
+  - opens detail panel
+- Drag (movement above threshold):
+  - moves item
+- Click must never trigger drag
+- Drag must never open detail panel
+
+---
+
+## 8. Detail Panel
+
+Opening an item displays a panel (side or modal) with:
+
+- Title (editable)
+- Customer (editable)
+- Assignee (select user)
+- Fixed toggle
+- Done toggle
+- Notes field
+- Delete button (admin only)
+
+### Behaviour
+
+- Changes save immediately or via explicit save
+- Panel can be closed without navigation
+
+---
+
+## 9. Quick Add
+
+### Behaviour
+
+- Clicking empty space (day, time, or bucket):
+  - opens inline input
+- User types title
+- Press enter:
+  - creates item in that location
+
+### Rules
+
+- No full form required
+- Minimal friction
+- Item is created in the location clicked (bucket, day, or time slot)
+- Additional details added later via panel
+
+---
+
+## 10. Drag and Drop
+
+### Bucket to Calendar
+
+- Drag item from bucket to:
+  - day → all-day placement
+  - time → timed placement
+
+### Calendar to Bucket
+
+- Drag item out of calendar:
+  - removes date/time
+  - returns to bucket
+
+### Calendar to Calendar
+
+- Drag between days updates date
+- Drag within time grid updates time
+- Resize adjusts duration
+
+---
+
+## 11. Assignment
+
+### Methods
+
+- Assign via detail panel
+- Optional future:
+  - assign via drag interaction
+
+### Rules
+
+- Assignee defines colour
+- Only one assignee per item
+
+---
+
+## 12. Fixed and Done
+
+### Fixed
+
+- Toggle in detail panel
+- Visual indicator (e.g. red)
+- Does not block movement
+
+### Done
+
+- Toggle in detail panel
+- Item remains visible
+- Item appears faded or marked
+
+---
+
+## 13. Search
+
+### Behaviour
+
+- Real-time search as user types
+- Matches:
+  - title
+  - customer
+  - notes
+
+### Results
+
+- Filters visible items
+- Does not modify data
+
+---
+
+## 14. Filters
+
+### My Items
+
+- Shows only items assigned to current user
+
+### Fixed Only
+
+- Shows only fixed items
+
+### Rules
+
+- Filters are toggleable
+- Filters affect visibility only
+
+---
+
+## 15. Week Navigation
+
+- Previous and next week navigation
+- Current week shortcut
+- Calendar and bucket update together
+
+---
+
+## 16. Visual Priorities
+
+The UI must prioritise:
+
+- Clarity over density
+- Speed over feature depth
+- Visual ownership (colour)
+- Minimal clicks
+
+---
+
+## 17. Mobile Considerations
+
+- Must be readable on mobile
+- Drag and drop may be limited
+- Core actions (view, edit, quick add) must remain usable
+
+---
+
+## 18. Non-Goals
+
+The UI must not include:
+
+- Complex forms for creation
+- Multi-step workflows
+- Overloaded menus
+- Per-person calendar columns
+- Hidden state or unclear interactions
+
+---
+
+## 19. Consistency Rules
+
+- All interactions must be predictable
+- No unexpected state changes
+- Visual indicators must always match data state
+- UI must remain consistent across views
