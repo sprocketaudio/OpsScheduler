@@ -8,6 +8,9 @@ const updateItemRequestSchema = z
     title: z.string().trim().min(1, "Title is required").max(200, "Title must be 200 characters or fewer"),
     customer: z.string().trim().max(200, "Customer must be 200 characters or fewer").nullable().optional(),
     notes: z.string().trim().max(4000, "Notes must be 4000 characters or fewer").nullable().optional(),
+    assigneeId: z.string().trim().min(1, "assigneeId cannot be empty").nullable().optional(),
+    fixed: z.boolean().optional(),
+    done: z.boolean().optional(),
   })
   .strict();
 
@@ -109,6 +112,7 @@ export async function GET(
       endDate: true,
       startTime: true,
       endTime: true,
+      assigneeId: true,
       fixed: true,
       done: true,
     },
@@ -125,6 +129,20 @@ export async function GET(
     );
   }
 
+  const assignableUsers = await prisma.user.findMany({
+    where: {
+      organizationId: currentUser.organizationId,
+      active: true,
+    },
+    orderBy: [{ name: "asc" }, { email: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      colour: true,
+    },
+  });
+
   return Response.json(
     {
       item: {
@@ -137,9 +155,11 @@ export async function GET(
         endDate: item.endDate ? formatIsoDateUtc(item.endDate) : null,
         startTime: item.startTime ? formatIsoTimeUtc(item.startTime) : null,
         endTime: item.endTime ? formatIsoTimeUtc(item.endTime) : null,
+        assigneeId: item.assigneeId,
         fixed: item.fixed,
         done: item.done,
       },
+      assignableUsers,
     },
     {
       status: 200,
@@ -242,6 +262,38 @@ export async function PATCH(
   const title = parsedRequest.data.title.trim();
   const customer = parsedRequest.data.customer?.trim() ?? "";
   const notes = parsedRequest.data.notes?.trim() ?? "";
+  let assigneeId = parsedRequest.data.assigneeId ?? undefined;
+
+  if (typeof assigneeId === "string") {
+    assigneeId = assigneeId.trim();
+  }
+
+  if (assigneeId) {
+    const assignee = await prisma.user.findFirst({
+      where: {
+        id: assigneeId,
+        organizationId: currentUser.organizationId,
+        active: true,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!assignee) {
+      return Response.json(
+        {
+          error: "assigneeId must reference an active user in your organization.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+  }
+
+  const fixed = parsedRequest.data.fixed ?? undefined;
+  const done = parsedRequest.data.done ?? undefined;
 
   const updatedItem = await prisma.workItem.update({
     where: {
@@ -251,6 +303,12 @@ export async function PATCH(
       title,
       customer: customer.length > 0 ? customer : null,
       notes: notes.length > 0 ? notes : null,
+      assigneeId:
+        parsedRequest.data.assigneeId === undefined
+          ? undefined
+          : assigneeId ?? null,
+      fixed,
+      done,
       updatedById: currentUser.id,
     },
     select: {
@@ -263,6 +321,7 @@ export async function PATCH(
       endDate: true,
       startTime: true,
       endTime: true,
+      assigneeId: true,
       fixed: true,
       done: true,
     },
@@ -280,6 +339,7 @@ export async function PATCH(
         endDate: updatedItem.endDate ? formatIsoDateUtc(updatedItem.endDate) : null,
         startTime: updatedItem.startTime ? formatIsoTimeUtc(updatedItem.startTime) : null,
         endTime: updatedItem.endTime ? formatIsoTimeUtc(updatedItem.endTime) : null,
+        assigneeId: updatedItem.assigneeId,
         fixed: updatedItem.fixed,
         done: updatedItem.done,
       },

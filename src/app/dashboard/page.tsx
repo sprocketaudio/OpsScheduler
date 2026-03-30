@@ -29,6 +29,10 @@ type CalendarEvent = {
   backgroundColor?: string;
   borderColor?: string;
   end?: string;
+  extendedProps?: {
+    done: boolean;
+    fixed: boolean;
+  };
   id: string;
   start: string;
   title: string;
@@ -89,6 +93,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         customer: true,
         done: true,
         fixed: true,
+        assignee: {
+          select: {
+            colour: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     }),
     prisma.workItem.findMany({
@@ -118,6 +129,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         endDate: true,
         startTime: true,
         endTime: true,
+        fixed: true,
+        done: true,
         assignee: {
           select: {
             colour: true,
@@ -147,6 +160,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           : undefined,
         backgroundColor: assigneeColour ?? undefined,
         borderColor: assigneeColour ?? undefined,
+        extendedProps: {
+          fixed: item.fixed,
+          done: item.done,
+        },
       });
       continue;
     }
@@ -159,6 +176,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       end: item.endDate ? formatIsoDateUtc(addDaysUtc(item.endDate, 1)) : undefined,
       backgroundColor: assigneeColour ?? undefined,
       borderColor: assigneeColour ?? undefined,
+      extendedProps: {
+        fixed: item.fixed,
+        done: item.done,
+      },
     });
   }
 

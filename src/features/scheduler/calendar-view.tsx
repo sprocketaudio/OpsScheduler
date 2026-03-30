@@ -66,6 +66,12 @@ type CalendarPlacementEvent = {
   start: Date | null;
 };
 
+type EventVisualMeta = {
+  done: boolean;
+  fixed: boolean;
+  title: string;
+};
+
 function buildEventTitleMap(events: EventInput[]): Map<string, string> {
   const titlesById = new Map<string, string>();
 
@@ -85,7 +91,46 @@ function buildEventTitleMap(events: EventInput[]): Map<string, string> {
   return titlesById;
 }
 
+function buildEventVisualMetaMap(events: EventInput[]): Map<string, EventVisualMeta> {
+  const visualMetaById = new Map<string, EventVisualMeta>();
+
+  for (const event of events) {
+    if (!event || typeof event !== "object") {
+      continue;
+    }
+
+    const eventId = "id" in event ? event.id : undefined;
+    const eventTitle = "title" in event ? event.title : undefined;
+    const eventExtendedProps = "extendedProps" in event ? event.extendedProps : undefined;
+
+    if ((typeof eventId === "string" || typeof eventId === "number") && typeof eventTitle === "string") {
+      const fixed =
+        !!eventExtendedProps &&
+        typeof eventExtendedProps === "object" &&
+        "fixed" in eventExtendedProps &&
+        eventExtendedProps.fixed === true;
+      const done =
+        !!eventExtendedProps &&
+        typeof eventExtendedProps === "object" &&
+        "done" in eventExtendedProps &&
+        eventExtendedProps.done === true;
+
+      visualMetaById.set(String(eventId), {
+        title: eventTitle,
+        fixed,
+        done,
+      });
+    }
+  }
+
+  return visualMetaById;
+}
+
 function renderEventContent(arg: EventContentArg) {
+  const eventProps = arg.event.extendedProps as {
+    done?: boolean;
+    fixed?: boolean;
+  };
   const maxLines = arg.event.allDay ? 1 : 3;
 
   return (
@@ -94,7 +139,10 @@ function renderEventContent(arg: EventContentArg) {
         <div className="truncate text-[11px] font-medium text-foreground/80">{arg.timeText}</div>
       ) : null}
       <div
-        className="break-words text-[11px] font-semibold text-foreground"
+        className={[
+          "break-words text-[11px] font-semibold text-foreground",
+          eventProps.done ? "line-through" : "",
+        ].join(" ")}
         style={{
           display: "-webkit-box",
           WebkitBoxOrient: "vertical",
@@ -103,6 +151,16 @@ function renderEventContent(arg: EventContentArg) {
         }}
       >
         {arg.event.title}
+      </div>
+      <div className="mt-0.5 flex items-center gap-1">
+        {eventProps.fixed ? (
+          <span className="rounded border border-red-500/70 px-1 text-[10px] font-medium text-red-700">Fixed</span>
+        ) : null}
+        {eventProps.done ? (
+          <span className="rounded border border-muted-foreground/40 px-1 text-[10px] font-medium text-muted-foreground">
+            Done
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -263,6 +321,7 @@ export function SchedulerCalendar({
 
   useEffect(() => {
     const titlesById = buildEventTitleMap(events);
+    const visualMetaById = buildEventVisualMetaMap(events);
     const renderedEventElements = document.querySelectorAll<HTMLElement>("[data-scheduler-event-id]");
 
     renderedEventElements.forEach((element) => {
@@ -274,10 +333,14 @@ export function SchedulerCalendar({
       const title = titlesById.get(eventId);
       if (title) {
         element.setAttribute("title", title);
-        return;
+      } else {
+        element.removeAttribute("title");
       }
 
-      element.removeAttribute("title");
+      const visualMeta = visualMetaById.get(eventId);
+      element.classList.toggle("opacity-60", !!visualMeta?.done);
+      element.classList.toggle("ring-1", !!visualMeta?.fixed);
+      element.classList.toggle("ring-red-500/70", !!visualMeta?.fixed);
     });
   }, [events]);
 
@@ -474,8 +537,15 @@ export function SchedulerCalendar({
   }
 
   function handleEventDidMount(arg: EventMountArg) {
+    const eventProps = arg.event.extendedProps as {
+      done?: boolean;
+      fixed?: boolean;
+    };
     arg.el.dataset.schedulerEventId = String(arg.event.id);
     arg.el.setAttribute("title", arg.event.title);
+    arg.el.classList.toggle("opacity-60", eventProps.done === true);
+    arg.el.classList.toggle("ring-1", eventProps.fixed === true);
+    arg.el.classList.toggle("ring-red-500/70", eventProps.fixed === true);
   }
 
   function handleEventDragStart() {

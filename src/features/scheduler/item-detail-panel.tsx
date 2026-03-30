@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 
 type ItemDetailResponse = {
   item: {
+    assigneeId: string | null;
     customer: string | null;
+    done: boolean;
     endDate: string | null;
     endTime: string | null;
+    fixed: boolean;
     id: string;
     notes: string | null;
     startDate: string | null;
@@ -17,6 +20,12 @@ type ItemDetailResponse = {
     targetWeek: string;
     title: string;
   };
+  assignableUsers: Array<{
+    colour: string;
+    email: string;
+    id: string;
+    name: string;
+  }>;
 };
 
 type ItemDetailPanelProps = {
@@ -31,10 +40,14 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
   const [title, setTitle] = useState("");
   const [customer, setCustomer] = useState("");
   const [notes, setNotes] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [isFixed, setIsFixed] = useState(false);
+  const [isDone, setIsDone] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [assignableUsers, setAssignableUsers] = useState<ItemDetailResponse["assignableUsers"]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   function handleStartDateChange(value: string) {
@@ -125,10 +138,14 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
           setTitle(payload.item.title);
           setCustomer(payload.item.customer ?? "");
           setNotes(payload.item.notes ?? "");
+          setAssigneeId(payload.item.assigneeId ?? "");
+          setIsFixed(payload.item.fixed);
+          setIsDone(payload.item.done);
           setStartDate(payload.item.startDate ?? "");
           setStartTime(formatTimeInputValue(payload.item.startTime));
           setEndDate(payload.item.endDate ?? "");
           setEndTime(formatTimeInputValue(payload.item.endTime));
+          setAssignableUsers(payload.assignableUsers);
         }
       } catch {
         if (!isCancelled) {
@@ -238,6 +255,9 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
           title: normalizedTitle,
           customer: customer.trim(),
           notes: notes.trim(),
+          assigneeId: assigneeId || null,
+          fixed: isFixed,
+          done: isDone,
         }),
       });
 
@@ -334,6 +354,50 @@ export function ItemDetailPanel({ itemId, onClose }: ItemDetailPanelProps) {
                 disabled={isSaving}
                 className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               />
+            </div>
+
+            <div className="grid gap-1.5 rounded-md border p-3">
+              <p className="text-sm font-medium">Assignment and status</p>
+              <div className="grid gap-2">
+                <label htmlFor="item-assignee" className="text-sm font-medium">
+                  Assignee
+                </label>
+                <select
+                  id="item-assignee"
+                  value={assigneeId}
+                  onChange={(event) => setAssigneeId(event.target.value)}
+                  disabled={isSaving}
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Unassigned</option>
+                  {assignableUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mt-1 flex flex-wrap items-center gap-4">
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isFixed}
+                    onChange={(event) => setIsFixed(event.target.checked)}
+                    disabled={isSaving}
+                  />
+                  Fixed
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isDone}
+                    onChange={(event) => setIsDone(event.target.checked)}
+                    disabled={isSaving}
+                  />
+                  Done
+                </label>
+              </div>
             </div>
 
             <div className="grid gap-1.5 rounded-md border p-3">

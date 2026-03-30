@@ -125,12 +125,12 @@ Opening an item displays a panel (side or modal) with:
 - Customer (editable)
 - Notes field
 - Start date/time with optional end date/time (editable schedule range)
-
-Planned additions in later phases:
-
 - Assignee (select user)
 - Fixed toggle
 - Done toggle
+
+Planned additions in later phases:
+
 - Delete button (admin only)
 
 ### Behaviour

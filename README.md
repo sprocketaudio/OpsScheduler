@@ -79,7 +79,7 @@ pnpm prisma:validate
 pnpm dev
 ```
 
-Note: Phases 7 and 8 are implemented, including drag-and-drop scheduling and detail-panel editing for title/customer/notes.
+Note: Phases 7, 8, and 9 are implemented, including drag-and-drop scheduling, detail-panel editing, assignee selection, and fixed/done states.
 
 ---
 

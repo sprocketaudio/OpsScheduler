@@ -6,6 +6,11 @@ import { BucketQuickAdd } from "@/features/scheduler/bucket-quick-add";
 import { ItemDetailPanel } from "@/features/scheduler/item-detail-panel";
 
 export type BucketPanelItem = {
+  assignee: {
+    colour: string;
+    email: string;
+    name: string;
+  } | null;
   customer: string | null;
   done: boolean;
   fixed: boolean;
@@ -115,11 +120,25 @@ export function BucketPanel({ items, targetWeekIso }: BucketPanelProps) {
               onPointerUp={(event) => handlePointerUp(item.id, event)}
               onPointerCancel={() => handlePointerCancel(item.id)}
               onClick={() => handleItemClick(item.id)}
-              className="cursor-grab rounded-md border p-3 active:cursor-grabbing"
+              className={[
+                "cursor-grab rounded-md border p-3 active:cursor-grabbing",
+                item.done ? "opacity-60" : "",
+                item.fixed ? "ring-1 ring-red-500/70" : "",
+              ].join(" ")}
             >
               <p className="text-sm font-medium">{item.title}</p>
               {item.customer ? (
                 <p className="text-sm text-muted-foreground">Customer: {item.customer}</p>
+              ) : null}
+              {item.assignee ? (
+                <div className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: item.assignee.colour }}
+                    aria-hidden="true"
+                  />
+                  <span>{item.assignee.name || item.assignee.email}</span>
+                </div>
               ) : null}
               <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                 {item.fixed ? <span>Fixed</span> : null}
