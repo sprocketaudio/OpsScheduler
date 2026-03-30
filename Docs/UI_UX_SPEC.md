@@ -255,7 +255,52 @@ The UI must prioritise:
 
 ---
 
-## 17. Mobile Considerations
+## 17. Visual Design Direction
+
+The UI must feel modern, clean, and responsive without becoming decorative or heavy.
+
+### Design Goals
+
+- Clean and professional appearance
+- Modern web application feel
+- Fast and lightweight interaction
+- Clear hierarchy and spacing
+- Strong contrast and readability
+- Minimal clutter
+- Consistent styling across all screens
+
+### Typography Rules
+
+- Use a single modern sans-serif font across the application UI
+- MVP baseline font: Manrope (applied globally through `next/font`)
+- Typography must prioritise readability and consistent spacing over stylistic variation
+
+### Colour Rules
+
+- Assignee colour is functional and must remain clearly visible
+- Fixed items must be visually distinct from normal items
+- Done items must remain visible but appear subdued
+- Base UI colours must remain neutral so assignee colours stand out
+- Avoid high saturation, noisy backgrounds, or decorative gradients
+
+### Component and Layout Rules
+
+- Use consistent spacing and alignment throughout
+- Prefer card, panel, and sheet patterns over dense layouts
+- Inputs, buttons, and panels must feel modern but understated
+- Motion and animation must be subtle and only used to improve clarity
+- Default to simplicity over visual styling when unsure
+
+### Non-Goals
+
+- No flashy or novelty-driven styling
+- No dense enterprise-style clutter
+- No visual treatment that reduces readability or scheduling clarity
+- No animation used purely for decoration
+
+---
+
+## 18. Mobile Considerations
 
 - Must be readable on mobile
 - Drag and drop may be limited
@@ -263,7 +308,7 @@ The UI must prioritise:
 
 ---
 
-## 18. Non-Goals
+## 19. Non-Goals
 
 The UI must not include:
 
@@ -275,7 +320,7 @@ The UI must not include:
 
 ---
 
-## 19. Consistency Rules
+## 20. Consistency Rules
 
 - All interactions must be predictable
 - No unexpected state changes

@@ -68,6 +68,9 @@ The system must not store:
 - No public registration
 - Users must be pre-approved or invited
 
+For MVP Phase 2:
+- Approved users are controlled by a server-side email allowlist (`AUTH_ALLOWED_EMAILS`)
+
 ### Roles
 
 - Admin:

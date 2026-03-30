@@ -198,6 +198,33 @@ UI must be practical for real operational use.
 
 ---
 
+## 10a. UI Quality and Design Discipline
+
+AI must treat UI work as a controlled part of the product, not as decoration.
+
+Rules:
+
+- All UI work must follow UI_UX_SPEC.md exactly
+- UI changes must preserve speed, clarity, and operational usability
+- AI must not introduce visual redesigns without corresponding documentation updates
+- AI must not add styling systems, themes, animations, or visual effects unless they are required by the current phase or explicitly requested
+- Early phases must focus on structure, layout, readability, and correct interaction behaviour, not polish
+- Visual polish, animation, and interaction refinement must be introduced only in later phases after core functionality is stable
+- shadcn/ui and Tailwind CSS should be used consistently to maintain a modern, clean, and understated interface
+- When unsure, AI must choose the simpler and less decorative UI option
+- UI consistency across screens is more important than making any one screen look impressive
+- Functional clarity must always take priority over visual novelty
+
+AI must not:
+
+- add flashy styling
+- introduce dense enterprise-style layouts
+- add gradients, decorative effects, or unnecessary animation
+- create inconsistent interaction patterns between screens
+- sacrifice readability for visual style
+
+---
+
 ## 11. Data Model Rules
 
 AI must follow DATA_MODEL.md.
@@ -255,7 +282,8 @@ When implementing changes:
 4. Implement changes  
 5. Maintain naming and behaviour consistency  
 6. Keep changes scoped  
-7. Avoid unrelated refactoring  
+7. Avoid unrelated refactoring 
+8. ensure any UI change remains aligned with UI_UX_SPEC.md and the current roadmap phase
 
 ---
 

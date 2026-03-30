@@ -18,6 +18,18 @@ The goal is to keep the model simple, predictable, and aligned with the workflow
 
 ---
 
+## 2.1 Phase Implementation Notes
+
+- Phase 2 implements the authentication tables required by Auth.js:
+  - User
+  - Account
+  - Session
+  - VerificationToken
+- In Phase 2, User contains Auth.js profile fields plus `active`
+- Phase 3 extends User and adds Organization and WorkItem to complete the MVP workflow model
+
+---
+
 ## 3. Core Entities
 
 ### Organization

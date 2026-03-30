@@ -40,14 +40,17 @@ OpsScheduler is a single application with the following components:
 - Prisma Client uses PostgreSQL driver adapter (`@prisma/adapter-pg`)
 - Stores:
   - users
+  - accounts
+  - verification tokens
+  - auth sessions
   - work items
-  - sessions
   - organisations
 
 ### Authentication Layer
 
 - Auth.js with database sessions
 - Email-based magic link login
+- Approved user allowlist enforced server-side via configuration
 - No password storage
 
 ---
@@ -91,6 +94,7 @@ OpsScheduler is a single application with the following components:
 - Auth.js with email magic links
 - Sessions stored in database
 - Secure cookies with HTTPS
+- Unauthenticated users are redirected to `/login` for protected routes
 
 ---
 
@@ -130,6 +134,8 @@ Required environment variables include:
 - DATABASE_URL
 - AUTH_SECRET
 - AUTH_URL
+- AUTH_EMAIL_FROM
+- AUTH_ALLOWED_EMAILS
 - RESEND_API_KEY
 
 Additional variables may be added as needed.
@@ -220,6 +226,8 @@ Core dependencies:
 - TypeScript
 - Prisma
 - Auth.js
+- @next-auth/prisma-adapter
+- nodemailer (Auth.js email provider peer dependency)
 - Zod
 - FullCalendar
 - dnd-kit

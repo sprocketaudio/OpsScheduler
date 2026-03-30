@@ -64,9 +64,10 @@ pnpm install
 copy .env.example .env
 ```
 
-3. Validate Prisma setup:
+3. Apply and validate Prisma setup:
 
 ```bash
+pnpm exec prisma migrate deploy
 pnpm prisma:format
 pnpm prisma:validate
 ```
@@ -77,7 +78,7 @@ pnpm prisma:validate
 pnpm dev
 ```
 
-Note: Phase 1 includes Prisma setup only. Data models and migrations are implemented in Phase 3.
+Note: Phase 2 authentication is implemented. Core workflow models (Organization, WorkItem) are implemented in Phase 3.
 
 ---
 
@@ -88,6 +89,8 @@ Required variables:
 - DATABASE_URL  
 - AUTH_SECRET  
 - AUTH_URL  
+- AUTH_EMAIL_FROM  
+- AUTH_ALLOWED_EMAILS  
 - RESEND_API_KEY  
 
 ---

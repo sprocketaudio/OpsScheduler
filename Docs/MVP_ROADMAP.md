@@ -53,6 +53,9 @@ Each phase should be completed, tested, and stable before moving to the next.
 
 ## 4. Phase 2: Authentication
 
+### Status
+- Completed on March 30, 2026
+
 ### Objectives
 - Implement login system
 
@@ -76,10 +79,10 @@ Each phase should be completed, tested, and stable before moving to the next.
 - Implement core data model
 
 ### Tasks
-- Define Prisma schema:
+- Extend Prisma schema for workflow entities:
   - Organization
-  - User
   - WorkItem
+  - Remaining User fields required by DATA_MODEL.md (role, colour, timezone, organisation linkage)
 - Run initial migrations
 - Seed:
   - default organisation
