@@ -65,7 +65,7 @@ This phase is not complete until it satisfies the Definition of Done in AGENTS.m
 
 ### Tasks
 - Configure Auth.js
-- Implement magic link login via email
+- Implement 6-digit sign-in code login via email
 - Set up session handling
 - Add auth abuse protection via rate limiting
 - Revalidate active user state on session usage

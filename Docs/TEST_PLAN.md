@@ -77,8 +77,8 @@ Automated command baseline:
 ### Test: Approved user can log in
 - Start from logged out state
 - Enter approved email
-- Receive magic link
-- Complete login
+- Receive one-time sign-in code
+- Enter code and complete login
 - Verify access granted
 
 ### Expected Result
@@ -95,6 +95,16 @@ Automated command baseline:
 ### Expected Result
 - Access is denied
 - No valid session is created
+
+---
+
+### Test: Sign-in code verification endpoint is rate-limited
+- Trigger repeated verification attempts against `/api/auth/callback/email` with invalid codes from the same client identity
+
+### Expected Result
+- Endpoint returns `429` after threshold
+- Response includes `Retry-After`
+- Further verification attempts are blocked until window reset
 
 ---
 
@@ -762,7 +772,7 @@ Automated command baseline:
 ### Test: Dev auth bypass role mode (local only)
 - Set `AUTH_DEV_BYPASS_MODE=admin` or `AUTH_DEV_BYPASS_MODE=user` in local `.env`
 - Ensure at least one matching active user exists
-- Access a protected route without completing magic-link login
+- Access a protected route without completing email-code login
 
 ### Expected Result
 - Route access is granted using the selected role mode

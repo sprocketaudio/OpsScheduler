@@ -117,7 +117,7 @@ The intended workflow is:
 ### User and Access
 - Approved users only
 - No public sign-up
-- Email-based magic link login
+- Email-based 6-digit sign-in code login
 - Long rolling sessions
 - Admin and user roles
 - Admin-managed unique user colours

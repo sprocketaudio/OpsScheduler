@@ -15,7 +15,7 @@ export default async function LoginPage() {
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
           <CardDescription>
-            Use your approved work email to receive a magic sign-in link.
+            Use your approved work email to receive a 6-digit sign-in code.
           </CardDescription>
         </CardHeader>
         <CardContent>

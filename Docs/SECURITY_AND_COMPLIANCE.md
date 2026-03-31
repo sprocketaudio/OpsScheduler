@@ -43,10 +43,10 @@ The system must not store:
 
 ## 4. Authentication
 
-- Authentication is handled via email-based magic link login
+- Authentication is handled via email-based one-time sign-in code login
 - No password storage is allowed
 - Authentication must be implemented using a proven library (Auth.js)
-- Magic-link tokens must be short-lived and secure (default 15 minutes)
+- One-time sign-in codes must be short-lived and secure (default 15 minutes)
 - Sessions must be securely stored and managed
 - Login request responses must use a neutral confirmation message to reduce user-enumeration risk
 - For local development only, a guarded auth bypass may be enabled via environment configuration to impersonate an active provisioned user by role
@@ -110,6 +110,7 @@ For MVP:
 - Only required fields should be accepted
 - Reject unexpected or extra fields
 - Rate limiting must be applied to public authentication and all mutating API endpoints
+- Authentication rate limiting must cover both code issuance (`/api/auth/signin/email`) and code verification (`/api/auth/callback/email`)
 - Mutating endpoint limits must return `429` responses with `Retry-After` headers
 - Rate limiting must use shared backend storage so limits remain consistent across processes/instances
 - Mutating browser requests must pass same-origin validation against `AUTH_URL` using `Origin` and `Referer` fallback checks

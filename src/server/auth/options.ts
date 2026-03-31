@@ -1,4 +1,6 @@
+import { randomInt } from "node:crypto";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import type { Adapter } from "next-auth/adapters";
 import type { NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
 import { Resend } from "resend";
@@ -46,6 +48,70 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#039;");
 }
 
+const EMAIL_SIGN_IN_CODE_DIGITS = 6;
+const EMAIL_SIGN_IN_CODE_MAX_VALUE = 10 ** EMAIL_SIGN_IN_CODE_DIGITS;
+
+function generateSignInCode(): string {
+  return randomInt(0, EMAIL_SIGN_IN_CODE_MAX_VALUE)
+    .toString()
+    .padStart(EMAIL_SIGN_IN_CODE_DIGITS, "0");
+}
+
+function scopeVerificationToken(identifier: string, token: string): string {
+  return `${identifier.toLowerCase()}::${token}`;
+}
+
+function withScopedVerificationTokens(adapter: Adapter): Adapter {
+  const createVerificationToken = adapter.createVerificationToken?.bind(adapter);
+  const useVerificationToken = adapter.useVerificationToken?.bind(adapter);
+
+  if (!createVerificationToken || !useVerificationToken) {
+    throw new Error("Auth adapter must support verification tokens");
+  }
+
+  return {
+    ...adapter,
+    async createVerificationToken(verificationToken) {
+      const identifier = verificationToken.identifier.trim().toLowerCase();
+      return createVerificationToken({
+        ...verificationToken,
+        identifier,
+        token: scopeVerificationToken(identifier, verificationToken.token),
+      });
+    },
+    async useVerificationToken(verificationToken) {
+      const identifier = verificationToken.identifier?.trim().toLowerCase();
+      if (!identifier) {
+        return null;
+      }
+
+      return useVerificationToken({
+        ...verificationToken,
+        identifier,
+        token: scopeVerificationToken(identifier, verificationToken.token),
+      });
+    },
+  };
+}
+
+async function shouldSendSignInCode(identifier: string, approvedEmailSet: Set<string>): Promise<boolean> {
+  const candidateEmail = identifier.trim().toLowerCase();
+  if (!candidateEmail || !approvedEmailSet.has(candidateEmail)) {
+    return false;
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: {
+      email: candidateEmail,
+    },
+    select: {
+      active: true,
+    },
+  });
+
+  return Boolean(existingUser?.active);
+}
+
 const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 if (!authSecret) {
   throw new Error("AUTH_SECRET is required");
@@ -58,15 +124,27 @@ if (!authUrl) {
 }
 process.env.NEXTAUTH_URL ??= authUrl;
 
+let authUrlObject: URL;
+try {
+  authUrlObject = new URL(authUrl);
+} catch {
+  throw new Error("AUTH_URL must be a valid absolute URL");
+}
+
 const resend = new Resend(getRequiredEnv("RESEND_API_KEY"));
 const authEmailFrom = getRequiredEnv("AUTH_EMAIL_FROM");
 const approvedEmails = parseApprovedEmails(getRequiredEnv("AUTH_ALLOWED_EMAILS"));
-const magicLinkMaxAgeSeconds = getPositiveIntegerFromEnv("AUTH_MAGIC_LINK_MAX_AGE_SECONDS", 900);
+const emailCodeMaxAgeSeconds = getPositiveIntegerFromEnv(
+  "AUTH_EMAIL_CODE_MAX_AGE_SECONDS",
+  getPositiveIntegerFromEnv("AUTH_MAGIC_LINK_MAX_AGE_SECONDS", 900),
+);
 const sessionMaxAgeSeconds = getPositiveIntegerFromEnv("AUTH_SESSION_MAX_AGE_SECONDS", 60 * 60 * 24 * 14);
 const sessionUpdateAgeSeconds = getPositiveIntegerFromEnv(
   "AUTH_SESSION_UPDATE_AGE_SECONDS",
   60 * 60 * 12,
 );
+const authSignInPageUrl = `${authUrlObject.origin}/login`;
+const authHost = authUrlObject.host;
 
 if (approvedEmails.size === 0) {
   throw new Error("AUTH_ALLOWED_EMAILS must contain at least one email address");
@@ -77,7 +155,7 @@ if (sessionUpdateAgeSeconds > sessionMaxAgeSeconds) {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: withScopedVerificationTokens(PrismaAdapter(prisma)),
   secret: authSecret,
   session: {
     strategy: "database",
@@ -90,27 +168,37 @@ export const authOptions: NextAuthOptions = {
   providers: [
     EmailProvider({
       from: authEmailFrom,
-      maxAge: magicLinkMaxAgeSeconds,
-      async sendVerificationRequest({ identifier, url, provider }) {
-        const host = new URL(url).host;
-        const safeHost = escapeHtml(host);
+      maxAge: emailCodeMaxAgeSeconds,
+      async generateVerificationToken() {
+        return generateSignInCode();
+      },
+      async sendVerificationRequest({ identifier, token, provider }) {
+        // Defense-in-depth: only deliver codes for active, provisioned allowlisted users.
+        if (!(await shouldSendSignInCode(identifier, approvedEmails))) {
+          return;
+        }
+
+        const safeHost = escapeHtml(authHost);
+        const safeCode = escapeHtml(token);
 
         const { error } = await resend.emails.send({
           from: provider.from ?? authEmailFrom,
           to: identifier,
-          subject: "Sign in to OpsScheduler",
+          subject: "Your OpsScheduler sign-in code",
           text:
-            `Sign in to OpsScheduler (${host})\n` +
-            `${url}\n\n` +
-            `This link expires in ${Math.max(1, Math.floor(magicLinkMaxAgeSeconds / 60))} minutes.`,
+            `Sign in to OpsScheduler (${authHost})\n\n` +
+            `Your sign-in code is: ${token}\n\n` +
+            `Enter this code at ${authSignInPageUrl}\n\n` +
+            `This code expires in ${Math.max(1, Math.floor(emailCodeMaxAgeSeconds / 60))} minutes.`,
           html:
             `<p>Sign in to <strong>OpsScheduler</strong> (${safeHost}).</p>` +
-            `<p><a href="${url}">Click here to sign in</a></p>` +
-            `<p>This link expires in ${Math.max(1, Math.floor(magicLinkMaxAgeSeconds / 60))} minutes.</p>`,
+            `<p>Your sign-in code is <strong style="font-size:1.25rem;letter-spacing:0.08em;">${safeCode}</strong>.</p>` +
+            `<p>Enter this code on the sign-in page: <a href="${authSignInPageUrl}">${safeHost}</a></p>` +
+            `<p>This code expires in ${Math.max(1, Math.floor(emailCodeMaxAgeSeconds / 60))} minutes.</p>`,
         });
 
         if (error) {
-          throw new Error(`Failed to send magic link email: ${error.message}`);
+          throw new Error(`Failed to send sign-in code email: ${error.message}`);
         }
       },
     }),

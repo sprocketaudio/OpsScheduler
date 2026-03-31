@@ -30,7 +30,7 @@ This is a security and operational checklist, not a feature roadmap.
 - Next.js app runs behind nginx
 - HTTPS is mandatory
 - PostgreSQL is private (not internet reachable)
-- Auth is magic link only (Auth.js + Resend)
+- Auth is one-time email code only (Auth.js + Resend)
 - Users are provisioned in database and allowlisted
 
 If any assumption changes, this document must be updated before deployment.
@@ -93,6 +93,7 @@ Implementation references:
 - Replace in-memory limiter with shared store (Redis or DB-backed strategy)
 - Rate-limit all mutating routes, not only auth/create:
   - `/api/auth/signin/email`
+  - `/api/auth/callback/email`
   - `POST /api/items`
   - `PATCH /api/items/:id`
   - `PATCH /api/items/:id/placement`

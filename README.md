@@ -101,7 +101,7 @@ Required variables:
 - AUTH_URL  
 - AUTH_EMAIL_FROM  
 - AUTH_ALLOWED_EMAILS  
-- AUTH_MAGIC_LINK_MAX_AGE_SECONDS  
+- AUTH_EMAIL_CODE_MAX_AGE_SECONDS  
 - AUTH_SESSION_MAX_AGE_SECONDS  
 - AUTH_SESSION_UPDATE_AGE_SECONDS  
 - AUTH_SIGNIN_RATE_LIMIT_REQUESTS  
@@ -126,7 +126,7 @@ Optional development-only auth bypass variables:
 
 Notes:
 
-- Keep `AUTH_DEV_BYPASS_MODE=off` for normal magic-link authentication.
+- Keep `AUTH_DEV_BYPASS_MODE=off` for normal email-code authentication.
 - If bypass mode is enabled, the app auto-authenticates an active database user by role.
 - Bypass mode is blocked in production runtime and ignored during production build prerender.
 

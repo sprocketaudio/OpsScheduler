@@ -51,7 +51,7 @@ OpsScheduler is a single application with the following components:
 ### Authentication Layer
 
 - Auth.js with database sessions
-- Email-based magic link login
+- Email-based 6-digit sign-in code login
 - Approved user allowlist enforced server-side via configuration
 - No password storage
 
@@ -104,7 +104,7 @@ OpsScheduler is a single application with the following components:
 
 ## 7. Authentication
 
-- Auth.js with email magic links
+- Auth.js with email one-time sign-in codes
 - Sessions stored in database
 - Secure cookies with HTTPS
 - Unauthenticated users are redirected to `/login` for protected routes
@@ -117,7 +117,7 @@ OpsScheduler is a single application with the following components:
 
 ## 8. Email
 
-- Resend for sending magic link emails
+- Resend for sending sign-in code emails
 - No self-hosted SMTP for MVP
 - Email used only for authentication and optional future notifications
 
@@ -153,7 +153,7 @@ Required environment variables include:
 - AUTH_URL
 - AUTH_EMAIL_FROM
 - AUTH_ALLOWED_EMAILS
-- AUTH_MAGIC_LINK_MAX_AGE_SECONDS
+- AUTH_EMAIL_CODE_MAX_AGE_SECONDS
 - AUTH_SESSION_MAX_AGE_SECONDS
 - AUTH_SESSION_UPDATE_AGE_SECONDS
 - AUTH_SIGNIN_RATE_LIMIT_REQUESTS
