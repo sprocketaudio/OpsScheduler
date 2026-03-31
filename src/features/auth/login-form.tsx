@@ -131,7 +131,6 @@ export function LoginForm() {
             id="verification-code"
             inputMode="numeric"
             autoComplete="one-time-code"
-            pattern="\\d{6}"
             maxLength={CODE_LENGTH}
             required
             value={code}
