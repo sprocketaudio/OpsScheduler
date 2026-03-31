@@ -5,6 +5,11 @@ import { isReservedStatusColour, normalizeColourToken } from "@/features/setting
 import { getServerAuthSession } from "@/server/auth/session";
 import { logAuditEvent } from "@/server/audit/log";
 import { prisma } from "@/server/db/client";
+import { guardMutationOrigin } from "@/server/security/origin";
+import { consumeFixedWindowRateLimit } from "@/server/security/rate-limit";
+
+const ADMIN_COLOUR_SETTINGS_RATE_LIMIT_REQUESTS = 20;
+const ADMIN_COLOUR_SETTINGS_RATE_LIMIT_WINDOW_MS = 60_000;
 
 const colourSettingSchema = z.object({
   userId: z.string().trim().min(1),
@@ -17,6 +22,23 @@ const updateAdminColourSettingsSchema = z
     userColours: z.array(colourSettingSchema),
   })
   .strict();
+
+function getClientAddress(request: NextRequest): string {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const firstAddress = forwardedFor.split(",")[0]?.trim();
+    if (firstAddress) {
+      return firstAddress;
+    }
+  }
+
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) {
+    return realIp;
+  }
+
+  return "unknown";
+}
 
 function hasDuplicateColourValues(values: string[]): boolean {
   const seen = new Set<string>();
@@ -33,6 +55,11 @@ function hasDuplicateColourValues(values: string[]): boolean {
 }
 
 export async function PATCH(request: NextRequest) {
+  const originGuardResponse = guardMutationOrigin(request);
+  if (originGuardResponse) {
+    return originGuardResponse;
+  }
+
   const session = await getServerAuthSession();
   if (!session?.user?.id) {
     return Response.json(
@@ -41,6 +68,27 @@ export async function PATCH(request: NextRequest) {
       },
       {
         status: 401,
+      },
+    );
+  }
+
+  const clientAddress = getClientAddress(request);
+  const rateLimitOutcome = await consumeFixedWindowRateLimit({
+    key: `admin-colour-settings:${session.user.id}:${clientAddress}`,
+    limit: ADMIN_COLOUR_SETTINGS_RATE_LIMIT_REQUESTS,
+    windowMs: ADMIN_COLOUR_SETTINGS_RATE_LIMIT_WINDOW_MS,
+  });
+
+  if (!rateLimitOutcome.allowed) {
+    return Response.json(
+      {
+        error: "Colour settings update limit reached. Please wait and try again.",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimitOutcome.retryAfterSeconds),
+        },
       },
     );
   }
@@ -274,7 +322,7 @@ export async function PATCH(request: NextRequest) {
     });
   });
 
-  logAuditEvent({
+  await logAuditEvent({
     action: "admin.update_colour_settings",
     outcome: "success",
     actorUserId: currentUser.id,

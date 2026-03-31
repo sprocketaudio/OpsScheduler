@@ -1,47 +1,66 @@
-type FixedWindowBucket = {
-  count: number;
-  windowStartedAt: number;
-};
+import { prisma } from "@/server/db/client";
 
-const buckets = new Map<string, FixedWindowBucket>();
-const MAX_BUCKETS = 10_000;
+let lastCleanupAtMs = 0;
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
-function cleanupExpiredBuckets(now: number, windowMs: number) {
-  if (buckets.size < MAX_BUCKETS) {
+async function cleanupExpiredBuckets(now: Date, nowMs: number): Promise<void> {
+  if (nowMs - lastCleanupAtMs < CLEANUP_INTERVAL_MS) {
     return;
   }
 
-  for (const [key, bucket] of buckets) {
-    if (now - bucket.windowStartedAt >= windowMs) {
-      buckets.delete(key);
-    }
-  }
+  lastCleanupAtMs = nowMs;
+  await prisma.$executeRaw`
+    DELETE FROM "RateLimitBucket"
+    WHERE "expires_at" < ${now}
+  `;
 }
 
-export function consumeFixedWindowRateLimit(params: {
+export async function consumeFixedWindowRateLimit(params: {
   key: string;
   limit: number;
   windowMs: number;
-}): { allowed: boolean; retryAfterSeconds: number } {
+}): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
   const { key, limit, windowMs } = params;
-  const now = Date.now();
-  cleanupExpiredBuckets(now, windowMs);
+  const nowMs = Date.now();
+  const windowStartedAtMs = nowMs - (nowMs % windowMs);
+  const windowEndsAtMs = windowStartedAtMs + windowMs;
+  const windowStartedAt = new Date(windowStartedAtMs);
+  const windowEndsAt = new Date(windowEndsAtMs);
+  const now = new Date(nowMs);
 
-  const bucket = buckets.get(key);
-  if (!bucket || now - bucket.windowStartedAt >= windowMs) {
-    buckets.set(key, { count: 1, windowStartedAt: now });
+  await cleanupExpiredBuckets(now, nowMs);
+
+  const rows = await prisma.$queryRaw<Array<{ count: number }>>`
+    INSERT INTO "RateLimitBucket" (
+      "key",
+      "window_start",
+      "count",
+      "expires_at",
+      "created_at",
+      "updated_at"
+    )
+    VALUES (
+      ${key},
+      ${windowStartedAt},
+      1,
+      ${windowEndsAt},
+      ${now},
+      ${now}
+    )
+    ON CONFLICT ("key", "window_start")
+    DO UPDATE SET
+      "count" = "RateLimitBucket"."count" + 1,
+      "updated_at" = EXCLUDED."updated_at"
+    RETURNING "count"
+  `;
+
+  const count = Number(rows[0]?.count ?? 0);
+  if (count <= limit) {
     return { allowed: true, retryAfterSeconds: 0 };
   }
 
-  if (bucket.count >= limit) {
-    const retryAfterMs = windowMs - (now - bucket.windowStartedAt);
-    return {
-      allowed: false,
-      retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)),
-    };
-  }
-
-  bucket.count += 1;
-  buckets.set(key, bucket);
-  return { allowed: true, retryAfterSeconds: 0 };
+  return {
+    allowed: false,
+    retryAfterSeconds: Math.max(1, Math.ceil((windowEndsAtMs - nowMs) / 1000)),
+  };
 }

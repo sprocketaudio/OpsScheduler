@@ -63,6 +63,11 @@ Used for:
 - Utility functions
 - Critical state transitions
 
+Automated command baseline:
+
+- `pnpm test` runs the Vitest suite
+- `pnpm verify:hardening` runs lint, typecheck, tests, Prisma validation, and build as a release gate
+
 ---
 
 ## 5. Core Test Areas
@@ -430,6 +435,18 @@ Used for:
 
 ---
 
+### Test: Detail panel autosave writes details and schedule atomically
+- Open item detail panel
+- Change one detail field (for example title) and schedule fields (for example start time/end time) in the same autosave window
+- Simulate a validation failure in schedule input (for example end time without start time), then correct and retry
+
+### Expected Result
+- A single `PATCH /api/items/:id` autosave mutation handles detail and schedule values together
+- Invalid combined payloads are rejected with no partial persistence of either detail or schedule changes
+- After correction, both detail and schedule changes persist together
+
+---
+
 ### Test: Detail panel audit metadata is shown
 - Open an existing item detail panel
 - Verify created/updated actor and timestamps are displayed
@@ -767,20 +784,20 @@ Used for:
 
 ### Test: Sign-in audit events are emitted
 - Attempt sign-in with allowed and denied cases (unallowlisted or inactive user)
-- Inspect server logs
+- Query durable audit records (AuditEvent table) after each attempt
 
 ### Expected Result
-- Structured audit events are emitted for sign-in outcomes
-- Events include action and outcome values without sensitive token data
+- Structured audit events are persisted for sign-in outcomes
+- Events include action/outcome and actor context where available, without sensitive token data or raw denied-email values
 
 ---
 
 ### Test: Core item action audit events are emitted
 - Perform item create, edit, placement change, and delete actions
-- Inspect server logs
+- Query durable audit records (AuditEvent table)
 
 ### Expected Result
-- Structured audit events are emitted for each action
+- Structured audit events are persisted for each action
 - Events include actor, organisation scope, and target item identifiers
 
 ---

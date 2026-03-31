@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { NextRequest } from "next/server";
 import { authOptions } from "@/server/auth/options";
+import { guardMutationOrigin } from "@/server/security/origin";
 import { consumeFixedWindowRateLimit } from "@/server/security/rate-limit";
 
 const handler = NextAuth(authOptions);
@@ -49,8 +50,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ nex
 
 export async function POST(request: NextRequest, context: { params: Promise<{ nextauth: string[] }> }) {
   if (shouldRateLimitAuthRequest(request)) {
+    const originGuardResponse = guardMutationOrigin(request);
+    if (originGuardResponse) {
+      return originGuardResponse;
+    }
+
     const clientAddress = getClientAddress(request);
-    const outcome = consumeFixedWindowRateLimit({
+    const outcome = await consumeFixedWindowRateLimit({
       key: `auth-signin-email:${clientAddress}`,
       limit: AUTH_SIGNIN_EMAIL_LIMIT,
       windowMs: AUTH_SIGNIN_EMAIL_WINDOW_MS,

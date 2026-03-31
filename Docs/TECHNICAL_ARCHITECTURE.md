@@ -45,6 +45,8 @@ OpsScheduler is a single application with the following components:
   - auth sessions
   - work items
   - organisations
+  - rate-limit buckets
+  - audit events
 
 ### Authentication Layer
 
@@ -83,9 +85,9 @@ OpsScheduler is a single application with the following components:
 - Zod for validation
 - `POST /api/items` creation endpoint with strict validation, org-scoped writes, and rate limiting
 - `GET /api/items/:id` detail endpoint for loading item data into the detail panel, including read-only audit metadata
-- `PATCH /api/items/:id` detail update endpoint for title/customer/notes, assignee, fixed, on_hold, cancelled, and done edits
+- `PATCH /api/items/:id` atomic autosave endpoint for combined detail and schedule-range updates (title/customer/notes, assignee, fixed/on_hold/cancelled/done, start/end date/time, and target week)
 - `DELETE /api/items/:id` endpoint for admin-only item deletion scoped to the authenticated user's organization
-- `PATCH /api/items/:id/placement` placement endpoint for drag-and-drop scheduling updates
+- `PATCH /api/items/:id/placement` placement endpoint for drag-and-drop scheduling updates outside detail-panel autosave flow
 - `PATCH /api/users/me/preferences` endpoint for authenticated user settings preferences (date locale, theme mode, and calendar visible window)
 - `PATCH /api/admin/colour-settings` endpoint for admin-only user/default colour management with reserved-colour blocking
 - Dashboard server load applies organization-scoped carry-forward for unscheduled bucket items from prior weeks into the current week
@@ -169,6 +171,11 @@ Optional development-only auth bypass variables:
 - AUTH_DEV_BYPASS_ADMIN_EMAIL (optional explicit active admin email)
 - AUTH_DEV_BYPASS_USER_EMAIL (optional explicit active user email)
 
+Optional audit logging variables:
+
+- AUDIT_LOG_RETENTION_DAYS (default `180`)
+- AUDIT_LOG_MIRROR_CONSOLE (`true` or `false`)
+
 Additional variables may be added as needed.
 
 Prisma configuration notes:
@@ -208,7 +215,8 @@ Database bootstrap for MVP:
 - Input validation must be enforced at API boundary
 - Authentication handled by trusted library
 - Baseline security headers must be applied (CSP, frame protection, and referrer policy)
-- Auth and item-creation endpoints must be rate-limited
+- Public auth and all mutating API endpoints must be rate-limited via shared database-backed fixed-window buckets
+- Mutating browser requests must pass same-origin validation against configured `AUTH_URL` origin
 
 ---
 
@@ -236,9 +244,11 @@ Future options:
   - authentication events
   - key actions
   - structured audit events for sign-in and core work-item mutations (create, update, placement update, delete)
-
-- Logs stored locally or via simple logging system
+- Structured audit events are persisted to PostgreSQL (`AuditEvent`) as the durable sink
+- Audit retention cleanup is enforced by `AUDIT_LOG_RETENTION_DAYS` during audit writes
+- Access to durable audit records is restricted to controlled database access paths (no public API exposure)
 - Monitoring kept minimal for MVP
+- Single-org public-web operational safeguards (backup schedule, restore drill process, incident escalation path, and patch cadence) are defined in `Docs/OPERATIONS_RUNBOOK_SINGLE_ORG.md`
 
 ---
 
@@ -277,6 +287,10 @@ Core dependencies:
 - @emotion/react
 - @emotion/styled
 - date-fns
+
+Development/testing tools:
+
+- Vitest for automated hardening and regression test execution (`pnpm test`)
 
 ---
 

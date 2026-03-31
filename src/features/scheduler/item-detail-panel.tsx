@@ -342,49 +342,6 @@ export function ItemDetailPanel({
       const normalizedEndTime = draft.endTime.trim();
 
       try {
-        const placementResponse = await fetch(`/api/items/${activeItemId}/placement`, {
-          method: "PATCH",
-          headers: {
-            "content-type": "application/json",
-          },
-          body: JSON.stringify(
-            normalizedStartDate
-              ? {
-                  placement: {
-                    kind: "calendar",
-                    startDate: normalizedStartDate,
-                    startTime: formatTimeApiValue(normalizedStartTime),
-                    endDate: normalizedEndDate || undefined,
-                    endTime: formatTimeApiValue(normalizedEndTime),
-                    targetWeek: deriveWeekMondayIso(normalizedStartDate),
-                  },
-                }
-              : {
-                  placement: {
-                    kind: "bucket",
-                  },
-                },
-          ),
-        });
-
-        if (!placementResponse.ok) {
-          let error = "Unable to autosave item placement right now.";
-          try {
-            const payload = (await placementResponse.json()) as { error?: string };
-            if (payload.error) {
-              error = payload.error;
-            }
-          } catch {
-            // Keep generic message.
-          }
-
-          if (activeItemIdRef.current === activeItemId && sequence === saveSequenceRef.current) {
-            setErrorMessage(error);
-            setSaveStatus("error");
-          }
-          return;
-        }
-
         const response = await fetch(`/api/items/${activeItemId}`, {
           method: "PATCH",
           headers: {
@@ -399,6 +356,11 @@ export function ItemDetailPanel({
             onHold: draft.isOnHold,
             cancelled: draft.isCancelled,
             done: draft.isDone,
+            startDate: normalizedStartDate || null,
+            startTime: formatTimeApiValue(normalizedStartTime) ?? null,
+            endDate: normalizedEndDate || null,
+            endTime: formatTimeApiValue(normalizedEndTime) ?? null,
+            targetWeek: normalizedStartDate ? deriveWeekMondayIso(normalizedStartDate) : undefined,
           }),
         });
 

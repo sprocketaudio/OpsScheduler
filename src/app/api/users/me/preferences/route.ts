@@ -5,6 +5,11 @@ import { DATE_LOCALE_VALUES } from "@/features/settings/date-locale";
 import { THEME_PREFERENCE_VALUES } from "@/features/settings/theme";
 import { getServerAuthSession } from "@/server/auth/session";
 import { prisma } from "@/server/db/client";
+import { guardMutationOrigin } from "@/server/security/origin";
+import { consumeFixedWindowRateLimit } from "@/server/security/rate-limit";
+
+const USER_PREFERENCES_RATE_LIMIT_REQUESTS = 30;
+const USER_PREFERENCES_RATE_LIMIT_WINDOW_MS = 60_000;
 
 const userPreferencesUpdateSchema = z
   .object({
@@ -15,7 +20,29 @@ const userPreferencesUpdateSchema = z
   })
   .strict();
 
+function getClientAddress(request: NextRequest): string {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const firstAddress = forwardedFor.split(",")[0]?.trim();
+    if (firstAddress) {
+      return firstAddress;
+    }
+  }
+
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) {
+    return realIp;
+  }
+
+  return "unknown";
+}
+
 export async function PATCH(request: NextRequest) {
+  const originGuardResponse = guardMutationOrigin(request);
+  if (originGuardResponse) {
+    return originGuardResponse;
+  }
+
   const session = await getServerAuthSession();
   if (!session?.user?.id) {
     return Response.json(
@@ -24,6 +51,27 @@ export async function PATCH(request: NextRequest) {
       },
       {
         status: 401,
+      },
+    );
+  }
+
+  const clientAddress = getClientAddress(request);
+  const rateLimitOutcome = await consumeFixedWindowRateLimit({
+    key: `user-preferences:${session.user.id}:${clientAddress}`,
+    limit: USER_PREFERENCES_RATE_LIMIT_REQUESTS,
+    windowMs: USER_PREFERENCES_RATE_LIMIT_WINDOW_MS,
+  });
+
+  if (!rateLimitOutcome.allowed) {
+    return Response.json(
+      {
+        error: "Preference update limit reached. Please wait and try again.",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimitOutcome.retryAfterSeconds),
+        },
       },
     );
   }

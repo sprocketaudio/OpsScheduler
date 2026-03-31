@@ -109,7 +109,10 @@ For MVP:
 - No unvalidated input should be processed
 - Only required fields should be accepted
 - Reject unexpected or extra fields
-- Rate limiting must be applied to authentication and item-creation endpoints
+- Rate limiting must be applied to public authentication and all mutating API endpoints
+- Mutating endpoint limits must return `429` responses with `Retry-After` headers
+- Rate limiting must use shared backend storage so limits remain consistent across processes/instances
+- Mutating browser requests must pass same-origin validation against `AUTH_URL` using `Origin` and `Referer` fallback checks
 - Auth rate-limit controls must be configurable via environment variables
 
 ---
@@ -144,6 +147,10 @@ For MVP:
   - item placement updates
   - deletions
 - Audit logging for auth and core business actions is mandatory for MVP hardening and is implemented as structured server audit events
+- Structured audit events must be persisted to a durable sink (PostgreSQL `AuditEvent` in MVP hardening)
+- Retention must be enforced via configuration (`AUDIT_LOG_RETENTION_DAYS`)
+- Access to durable audit records must be restricted to controlled infrastructure/database roles
+- Audit metadata must avoid unnecessary personal data (for example, hashed identifiers instead of raw email values where actor identity is unavailable)
 
 - Logs must not contain sensitive data
 - Logging should support debugging but remain minimal
@@ -155,6 +162,8 @@ For MVP:
 - Database backups must be taken regularly
 - Backup process must be documented
 - Restore process should be tested periodically
+- Single-org web deployment backup/restore procedures and cadence are defined in `Docs/OPERATIONS_RUNBOOK_SINGLE_ORG.md`
+- Non-production restore drills must be recorded as operational evidence before public go-live
 
 ---
 

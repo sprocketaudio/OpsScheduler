@@ -121,6 +121,53 @@ Fields:
 
 ---
 
+### RateLimitBucket
+
+Represents a shared fixed-window rate-limiting counter bucket used for public endpoint throttling.
+
+Fields:
+
+- key (string, part of composite primary key)
+- window_start (timestamp, part of composite primary key)
+- count (integer, required)
+- expires_at (timestamp, required)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+Rules:
+
+- Composite primary key is (key, window_start)
+- Buckets are updated atomically for each request window
+- Expired buckets are cleanup candidates and indexed by expires_at
+
+---
+
+### AuditEvent
+
+Represents a durable structured audit log record.
+
+Fields:
+
+- id (string, primary key)
+- occurred_at (timestamp, required)
+- action (string, required)
+- outcome (string, required; `success`, `denied`, or `error`)
+- actor_user_id (string, optional)
+- organization_id (string, optional)
+- target_type (string, optional)
+- target_id (string, optional)
+- metadata (json object, required)
+- created_at (timestamp)
+
+Rules:
+
+- Audit events are append-only from application logic
+- Metadata must contain non-sensitive operational context only
+- Retention is controlled by application-level cleanup using `AUDIT_LOG_RETENTION_DAYS`
+- Audit records are not exposed via public API routes
+
+---
+
 ## 4. Relationships
 
 - User.organization_id → Organization.id
@@ -251,6 +298,10 @@ Recommended indexes:
 - WorkItem.cancelled
 - WorkItem.on_hold
 - WorkItem.fixed
+- RateLimitBucket.expires_at
+- AuditEvent.occurred_at
+- AuditEvent.organization_id + occurred_at
+- AuditEvent.action + occurred_at
 
 ---
 

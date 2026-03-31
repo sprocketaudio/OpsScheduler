@@ -1,9 +1,23 @@
 import { NextRequest } from "next/server";
 import { UserRole } from "@prisma/client";
 import { z } from "zod";
+import { parseWeekParamToMondayUtc, startOfWeekMondayUtc } from "@/features/scheduler/week";
 import { getServerAuthSession } from "@/server/auth/session";
 import { logAuditEvent } from "@/server/audit/log";
 import { prisma } from "@/server/db/client";
+import { guardMutationOrigin } from "@/server/security/origin";
+import { consumeFixedWindowRateLimit } from "@/server/security/rate-limit";
+
+const ITEM_DETAIL_UPDATE_RATE_LIMIT_REQUESTS = 60;
+const ITEM_DETAIL_UPDATE_RATE_LIMIT_WINDOW_MS = 60_000;
+const ITEM_DELETE_RATE_LIMIT_REQUESTS = 20;
+const ITEM_DELETE_RATE_LIMIT_WINDOW_MS = 60_000;
+
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_TIME_PATTERN = /^\d{2}:\d{2}:\d{2}$/;
+
+const isoDateSchema = z.string().regex(ISO_DATE_PATTERN, "Expected date format YYYY-MM-DD");
+const isoTimeSchema = z.string().regex(ISO_TIME_PATTERN, "Expected time format HH:MM:SS");
 
 const updateItemRequestSchema = z
   .object({
@@ -15,8 +29,212 @@ const updateItemRequestSchema = z
     onHold: z.boolean().optional(),
     cancelled: z.boolean().optional(),
     done: z.boolean().optional(),
+    startDate: isoDateSchema.nullable().optional(),
+    startTime: isoTimeSchema.nullable().optional(),
+    endDate: isoDateSchema.nullable().optional(),
+    endTime: isoTimeSchema.nullable().optional(),
+    targetWeek: isoDateSchema.optional(),
   })
   .strict();
+
+function parseIsoDateToUtcDate(value: string): Date | null {
+  if (!ISO_DATE_PATTERN.test(value)) {
+    return null;
+  }
+
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function parseIsoTimeToUtcDate(value: string): Date | null {
+  if (!ISO_TIME_PATTERN.test(value)) {
+    return null;
+  }
+
+  const [hoursPart, minutesPart, secondsPart] = value.split(":");
+  const hours = Number.parseInt(hoursPart ?? "", 10);
+  const minutes = Number.parseInt(minutesPart ?? "", 10);
+  const seconds = Number.parseInt(secondsPart ?? "", 10);
+
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    !Number.isFinite(seconds) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
+  ) {
+    return null;
+  }
+
+  return new Date(Date.UTC(1970, 0, 1, hours, minutes, seconds));
+}
+
+function resolveScheduleUpdate(params: {
+  existingItem: {
+    endDate: Date | null;
+    endTime: Date | null;
+    startDate: Date | null;
+    startTime: Date | null;
+    targetWeek: Date;
+  };
+  requestData: Pick<
+    z.infer<typeof updateItemRequestSchema>,
+    "endDate" | "endTime" | "startDate" | "startTime" | "targetWeek"
+  >;
+}): {
+  endDate: Date | null;
+  endTime: Date | null;
+  startDate: Date | null;
+  startTime: Date | null;
+  targetWeek: Date;
+} {
+  const { existingItem, requestData } = params;
+  const hasScheduleUpdate =
+    requestData.startDate !== undefined ||
+    requestData.startTime !== undefined ||
+    requestData.endDate !== undefined ||
+    requestData.endTime !== undefined ||
+    requestData.targetWeek !== undefined;
+
+  if (!hasScheduleUpdate) {
+    return {
+      startDate: existingItem.startDate,
+      startTime: existingItem.startTime,
+      endDate: existingItem.endDate,
+      endTime: existingItem.endTime,
+      targetWeek: existingItem.targetWeek,
+    };
+  }
+
+  const startDate =
+    requestData.startDate === undefined
+      ? existingItem.startDate
+      : requestData.startDate
+        ? parseIsoDateToUtcDate(requestData.startDate)
+        : null;
+
+  if (requestData.startDate !== undefined && requestData.startDate && !startDate) {
+    throw new Error("startDate must be a valid ISO date");
+  }
+
+  const startTime =
+    requestData.startTime === undefined
+      ? existingItem.startTime
+      : requestData.startTime
+        ? parseIsoTimeToUtcDate(requestData.startTime)
+        : null;
+
+  if (requestData.startTime !== undefined && requestData.startTime && !startTime) {
+    throw new Error("startTime must be a valid ISO time");
+  }
+
+  const endDate =
+    requestData.endDate === undefined
+      ? existingItem.endDate
+      : requestData.endDate
+        ? parseIsoDateToUtcDate(requestData.endDate)
+        : null;
+
+  if (requestData.endDate !== undefined && requestData.endDate && !endDate) {
+    throw new Error("endDate must be a valid ISO date");
+  }
+
+  const endTime =
+    requestData.endTime === undefined
+      ? existingItem.endTime
+      : requestData.endTime
+        ? parseIsoTimeToUtcDate(requestData.endTime)
+        : null;
+
+  if (requestData.endTime !== undefined && requestData.endTime && !endTime) {
+    throw new Error("endTime must be a valid ISO time");
+  }
+
+  if (!startDate) {
+    if (startTime || endDate || endTime) {
+      throw new Error("startDate is required when startTime, endDate, or endTime are set");
+    }
+
+    if (requestData.targetWeek) {
+      const parsedTargetWeek = parseWeekParamToMondayUtc(requestData.targetWeek);
+      if (!parsedTargetWeek) {
+        throw new Error("targetWeek must be a valid ISO date");
+      }
+
+      return {
+        startDate: null,
+        startTime: null,
+        endDate: null,
+        endTime: null,
+        targetWeek: parsedTargetWeek,
+      };
+    }
+
+    return {
+      startDate: null,
+      startTime: null,
+      endDate: null,
+      endTime: null,
+      targetWeek: existingItem.targetWeek,
+    };
+  }
+
+  if (!startTime && endTime) {
+    throw new Error("endTime cannot be set without startTime");
+  }
+
+  if (startTime && endDate && !endTime) {
+    throw new Error("endDate cannot be set without endTime for timed items");
+  }
+
+  if (endDate && endDate < startDate) {
+    throw new Error("endDate cannot be earlier than startDate");
+  }
+
+  let targetWeek: Date;
+  if (requestData.targetWeek) {
+    const parsedTargetWeek = parseWeekParamToMondayUtc(requestData.targetWeek);
+    if (!parsedTargetWeek) {
+      throw new Error("targetWeek must be a valid ISO date");
+    }
+    targetWeek = parsedTargetWeek;
+  } else {
+    targetWeek = startOfWeekMondayUtc(startDate);
+  }
+
+  return {
+    startDate,
+    startTime,
+    endDate,
+    endTime,
+    targetWeek,
+  };
+}
+
+function getClientAddress(request: NextRequest): string {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const firstAddress = forwardedFor.split(",")[0]?.trim();
+    if (firstAddress) {
+      return firstAddress;
+    }
+  }
+
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) {
+    return realIp;
+  }
+
+  return "unknown";
+}
 
 function formatIsoDateUtc(value: Date): string {
   const year = value.getUTCFullYear();
@@ -213,6 +431,11 @@ export async function PATCH(
     }>;
   },
 ) {
+  const originGuardResponse = guardMutationOrigin(request);
+  if (originGuardResponse) {
+    return originGuardResponse;
+  }
+
   const session = await getServerAuthSession();
   if (!session?.user?.id) {
     return Response.json(
@@ -221,6 +444,27 @@ export async function PATCH(
       },
       {
         status: 401,
+      },
+    );
+  }
+
+  const clientAddress = getClientAddress(request);
+  const rateLimitOutcome = await consumeFixedWindowRateLimit({
+    key: `item-detail-update:${session.user.id}:${clientAddress}`,
+    limit: ITEM_DETAIL_UPDATE_RATE_LIMIT_REQUESTS,
+    windowMs: ITEM_DETAIL_UPDATE_RATE_LIMIT_WINDOW_MS,
+  });
+
+  if (!rateLimitOutcome.allowed) {
+    return Response.json(
+      {
+        error: "Item update limit reached. Please wait and try again.",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimitOutcome.retryAfterSeconds),
+        },
       },
     );
   }
@@ -283,6 +527,11 @@ export async function PATCH(
     },
     select: {
       id: true,
+      targetWeek: true,
+      startDate: true,
+      endDate: true,
+      startTime: true,
+      endTime: true,
     },
   });
 
@@ -334,6 +583,34 @@ export async function PATCH(
   const onHold = parsedRequest.data.onHold ?? undefined;
   const cancelled = parsedRequest.data.cancelled ?? undefined;
   const done = parsedRequest.data.done ?? undefined;
+  let resolvedSchedule: ReturnType<typeof resolveScheduleUpdate>;
+  try {
+    resolvedSchedule = resolveScheduleUpdate({
+      existingItem: {
+        targetWeek: existingItem.targetWeek,
+        startDate: existingItem.startDate,
+        endDate: existingItem.endDate,
+        startTime: existingItem.startTime,
+        endTime: existingItem.endTime,
+      },
+      requestData: {
+        startDate: parsedRequest.data.startDate,
+        startTime: parsedRequest.data.startTime,
+        endDate: parsedRequest.data.endDate,
+        endTime: parsedRequest.data.endTime,
+        targetWeek: parsedRequest.data.targetWeek,
+      },
+    });
+  } catch (error) {
+    return Response.json(
+      {
+        error: error instanceof Error ? error.message : "Invalid schedule values.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
 
   const updatedItem = await prisma.workItem.update({
     where: {
@@ -351,6 +628,11 @@ export async function PATCH(
       onHold,
       cancelled,
       done,
+      targetWeek: resolvedSchedule.targetWeek,
+      startDate: resolvedSchedule.startDate,
+      startTime: resolvedSchedule.startTime,
+      endDate: resolvedSchedule.endDate,
+      endTime: resolvedSchedule.endTime,
       updatedById: currentUser.id,
     },
     select: {
@@ -371,7 +653,7 @@ export async function PATCH(
     },
   });
 
-  logAuditEvent({
+  await logAuditEvent({
     action: "item.update",
     outcome: "success",
     actorUserId: currentUser.id,
@@ -406,13 +688,18 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   context: {
     params: Promise<{
       id: string;
     }>;
   },
 ) {
+  const originGuardResponse = guardMutationOrigin(request);
+  if (originGuardResponse) {
+    return originGuardResponse;
+  }
+
   const session = await getServerAuthSession();
   if (!session?.user?.id) {
     return Response.json(
@@ -421,6 +708,27 @@ export async function DELETE(
       },
       {
         status: 401,
+      },
+    );
+  }
+
+  const clientAddress = getClientAddress(request);
+  const rateLimitOutcome = await consumeFixedWindowRateLimit({
+    key: `item-delete:${session.user.id}:${clientAddress}`,
+    limit: ITEM_DELETE_RATE_LIMIT_REQUESTS,
+    windowMs: ITEM_DELETE_RATE_LIMIT_WINDOW_MS,
+  });
+
+  if (!rateLimitOutcome.allowed) {
+    return Response.json(
+      {
+        error: "Item deletion limit reached. Please wait and try again.",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimitOutcome.retryAfterSeconds),
+        },
       },
     );
   }
@@ -450,7 +758,7 @@ export async function DELETE(
   }
 
   if (currentUser.role !== UserRole.admin) {
-    logAuditEvent({
+    await logAuditEvent({
       action: "item.delete",
       outcome: "denied",
       actorUserId: currentUser.id,
@@ -499,7 +807,7 @@ export async function DELETE(
     },
   });
 
-  logAuditEvent({
+  await logAuditEvent({
     action: "item.delete",
     outcome: "success",
     actorUserId: currentUser.id,

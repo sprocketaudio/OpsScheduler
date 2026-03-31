@@ -102,6 +102,35 @@ model WorkItem {
   @@index([fixed])
 }
 
+model RateLimitBucket {
+  key         String   @map("key")
+  windowStart DateTime @map("window_start")
+  count       Int
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@id([key, windowStart])
+  @@index([expiresAt])
+}
+
+model AuditEvent {
+  id             String   @id @default(cuid())
+  occurredAt     DateTime @default(now()) @map("occurred_at")
+  action         String   @db.VarChar(120)
+  outcome        String   @db.VarChar(16)
+  actorUserId    String?  @map("actor_user_id")
+  organizationId String?  @map("organization_id")
+  targetType     String?  @map("target_type") @db.VarChar(64)
+  targetId       String?  @map("target_id")
+  metadata       Json
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([occurredAt])
+  @@index([organizationId, occurredAt])
+  @@index([action, occurredAt])
+}
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique

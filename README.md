@@ -35,6 +35,8 @@ Key documents:
 - Docs/TECHNICAL_ARCHITECTURE.md  
 - Docs/MVP_ROADMAP.md  
 - Docs/TEST_PLAN.md  
+- Docs/WEB_HARDENING_SINGLE_ORG.md  
+- Docs/OPERATIONS_RUNBOOK_SINGLE_ORG.md  
 
 AI implementation rules are defined separately:
 
@@ -79,6 +81,13 @@ pnpm prisma:validate
 pnpm dev
 ```
 
+5. Run automated checks:
+
+```bash
+pnpm test
+pnpm verify:hardening
+```
+
 Note: MVP work through Phase 13 (Polish and Stability) is implemented locally. Phase 14 (deployment hardening and rollout) remains pending.
 
 ---
@@ -98,6 +107,11 @@ Required variables:
 - AUTH_SIGNIN_RATE_LIMIT_REQUESTS  
 - AUTH_SIGNIN_RATE_LIMIT_WINDOW_SECONDS  
 - RESEND_API_KEY  
+
+Optional audit logging variables:
+
+- AUDIT_LOG_RETENTION_DAYS (default `180`)  
+- AUDIT_LOG_MIRROR_CONSOLE (`true`/`false`, defaults to `true` outside production)  
 
 Seed variables:
 

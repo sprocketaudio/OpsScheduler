@@ -9,6 +9,7 @@ import {
 import { getServerAuthSession } from "@/server/auth/session";
 import { logAuditEvent } from "@/server/audit/log";
 import { prisma } from "@/server/db/client";
+import { guardMutationOrigin } from "@/server/security/origin";
 import { consumeFixedWindowRateLimit } from "@/server/security/rate-limit";
 
 const ITEM_CREATE_RATE_LIMIT_REQUESTS = 30;
@@ -169,6 +170,11 @@ function formatIsoTimeUtc(value: Date): string {
 }
 
 export async function POST(request: NextRequest) {
+  const originGuardResponse = guardMutationOrigin(request);
+  if (originGuardResponse) {
+    return originGuardResponse;
+  }
+
   const session = await getServerAuthSession();
   if (!session?.user?.id) {
     return Response.json(
@@ -182,7 +188,7 @@ export async function POST(request: NextRequest) {
   }
 
   const clientAddress = getClientAddress(request);
-  const rateLimitOutcome = consumeFixedWindowRateLimit({
+  const rateLimitOutcome = await consumeFixedWindowRateLimit({
     key: `item-create:${session.user.id}:${clientAddress}`,
     limit: ITEM_CREATE_RATE_LIMIT_REQUESTS,
     windowMs: ITEM_CREATE_RATE_LIMIT_WINDOW_MS,
@@ -293,7 +299,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  logAuditEvent({
+  await logAuditEvent({
     action: "item.create",
     outcome: "success",
     actorUserId: currentUser.id,

@@ -4,6 +4,7 @@ import { parseWeekParamToMondayUtc } from "@/features/scheduler/week";
 import { getServerAuthSession } from "@/server/auth/session";
 import { logAuditEvent } from "@/server/audit/log";
 import { prisma } from "@/server/db/client";
+import { guardMutationOrigin } from "@/server/security/origin";
 import { consumeFixedWindowRateLimit } from "@/server/security/rate-limit";
 
 const ITEM_UPDATE_RATE_LIMIT_REQUESTS = 60;
@@ -175,6 +176,11 @@ export async function PATCH(
     }>;
   },
 ) {
+  const originGuardResponse = guardMutationOrigin(request);
+  if (originGuardResponse) {
+    return originGuardResponse;
+  }
+
   const session = await getServerAuthSession();
   if (!session?.user?.id) {
     return Response.json(
@@ -188,7 +194,7 @@ export async function PATCH(
   }
 
   const clientAddress = getClientAddress(request);
-  const rateLimitOutcome = consumeFixedWindowRateLimit({
+  const rateLimitOutcome = await consumeFixedWindowRateLimit({
     key: `item-update:${session.user.id}:${clientAddress}`,
     limit: ITEM_UPDATE_RATE_LIMIT_REQUESTS,
     windowMs: ITEM_UPDATE_RATE_LIMIT_WINDOW_MS,
@@ -311,7 +317,7 @@ export async function PATCH(
         },
       });
 
-      logAuditEvent({
+      await logAuditEvent({
         action: "item.update_placement",
         outcome: "success",
         actorUserId: currentUser.id,
@@ -351,7 +357,7 @@ export async function PATCH(
       },
     });
 
-    logAuditEvent({
+    await logAuditEvent({
       action: "item.update_placement",
       outcome: "success",
       actorUserId: currentUser.id,
