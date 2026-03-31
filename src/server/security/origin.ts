@@ -51,13 +51,68 @@ function isLikelyBrowserRequest(request: NextRequest): boolean {
   );
 }
 
+function firstHeaderValue(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const first = value.split(",")[0]?.trim();
+  return first && first.length > 0 ? first : null;
+}
+
+function parseExplicitOrigin(value: string): string | null {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+function buildOriginFromParts(protocol: string, host: string): string | null {
+  const normalizedProtocol = protocol.replace(/:$/, "");
+  if (!normalizedProtocol || !host) {
+    return null;
+  }
+
+  return parseExplicitOrigin(`${normalizedProtocol}://${host}`);
+}
+
+function getNonProductionRuntimeOrigins(request: NextRequest): Set<string> {
+  const runtimeOrigins = new Set<string>();
+
+  runtimeOrigins.add(request.nextUrl.origin);
+
+  const forwardedHost = firstHeaderValue(request.headers.get("x-forwarded-host"));
+  const forwardedProto = firstHeaderValue(request.headers.get("x-forwarded-proto"));
+  const host = firstHeaderValue(request.headers.get("host"));
+  const nextUrlProtocol = request.nextUrl.protocol;
+
+  if (forwardedHost) {
+    const fromForwarded = buildOriginFromParts(forwardedProto ?? nextUrlProtocol, forwardedHost);
+    if (fromForwarded) {
+      runtimeOrigins.add(fromForwarded);
+    }
+  }
+
+  if (host) {
+    const fromHost = buildOriginFromParts(forwardedProto ?? nextUrlProtocol, host);
+    if (fromHost) {
+      runtimeOrigins.add(fromHost);
+    }
+  }
+
+  return runtimeOrigins;
+}
+
 function getAllowedOrigins(request: NextRequest): Set<string> {
   const allowed = new Set<string>([expectedAppOrigin]);
 
-  // In non-production environments (local/Codespaces), accept the runtime host
-  // origin so forwarded preview URLs remain usable even when AUTH_URL drifts.
+  // In non-production environments (local/Codespaces), accept runtime host
+  // origin variants inferred from request URL and forwarded/host headers.
   if (process.env.NODE_ENV !== "production") {
-    allowed.add(request.nextUrl.origin);
+    for (const origin of getNonProductionRuntimeOrigins(request)) {
+      allowed.add(origin);
+    }
   }
 
   return allowed;
