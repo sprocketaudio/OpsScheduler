@@ -51,10 +51,23 @@ function isLikelyBrowserRequest(request: NextRequest): boolean {
   );
 }
 
+function getAllowedOrigins(request: NextRequest): Set<string> {
+  const allowed = new Set<string>([expectedAppOrigin]);
+
+  // In non-production environments (local/Codespaces), accept the runtime host
+  // origin so forwarded preview URLs remain usable even when AUTH_URL drifts.
+  if (process.env.NODE_ENV !== "production") {
+    allowed.add(request.nextUrl.origin);
+  }
+
+  return allowed;
+}
+
 export function validateMutationOrigin(request: NextRequest): OriginValidationResult {
   const originHeader = request.headers.get("origin");
   const refererHeader = request.headers.get("referer");
   const hasOriginContext = Boolean(originHeader) || Boolean(refererHeader);
+  const allowedOrigins = getAllowedOrigins(request);
 
   if (!hasOriginContext && !isLikelyBrowserRequest(request)) {
     return { ok: true };
@@ -65,7 +78,7 @@ export function validateMutationOrigin(request: NextRequest): OriginValidationRe
     if (!origin) {
       return { ok: false, reason: "invalid_origin_header" };
     }
-    if (origin !== expectedAppOrigin) {
+    if (!allowedOrigins.has(origin)) {
       return { ok: false, reason: "origin_mismatch" };
     }
     return { ok: true };
@@ -76,7 +89,7 @@ export function validateMutationOrigin(request: NextRequest): OriginValidationRe
     if (!refererOrigin) {
       return { ok: false, reason: "invalid_referer_header" };
     }
-    if (refererOrigin !== expectedAppOrigin) {
+    if (!allowedOrigins.has(refererOrigin)) {
       return { ok: false, reason: "origin_mismatch" };
     }
     return { ok: true };
