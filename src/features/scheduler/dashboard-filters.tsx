@@ -81,7 +81,7 @@ export function DashboardFilters({ initialSearch, myItemsOnly, showMyItemsButton
         value={searchDraft}
         onChange={(event) => setSearchDraft(event.target.value)}
         className={cn(
-          "w-full min-w-[180px] sm:w-[22rem] lg:w-[26rem]",
+          "w-full min-w-[180px] sm:w-[20rem] lg:w-[23rem] xl:w-[25rem]",
           hasSearchText
             ? "border-amber-400 bg-amber-100/90 text-amber-950 placeholder:text-amber-700/80 focus-visible:ring-amber-400/40"
             : "",

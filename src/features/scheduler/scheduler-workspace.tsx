@@ -136,7 +136,7 @@ export function SchedulerWorkspace({
 
   return (
     <>
-      <section className="mx-auto grid w-full max-w-7xl gap-4 p-3 xl:grid-cols-[minmax(0,1fr)_18rem] xl:p-4 2xl:grid-cols-[minmax(0,1fr)_19rem]">
+      <section className="mx-auto grid w-full max-w-7xl gap-4 p-3 xl:grid-cols-[minmax(0,1fr)_17rem] xl:p-4 2xl:grid-cols-[minmax(0,1fr)_19rem]">
         <Card>
           <CardHeader className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-3">

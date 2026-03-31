@@ -66,7 +66,7 @@ export default async function SettingsPage() {
       : [];
 
   return (
-    <main className="page-density-laptop min-h-screen">
+    <main className="min-h-screen">
       <header className="border-b">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-3 xl:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
