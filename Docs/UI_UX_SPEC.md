@@ -28,14 +28,20 @@ The top bar must include:
 - Search input
 - Filter toggles:
   - My Items
-- User profile / settings access
+- Settings access
 - Signed-in user identity display (email or display name)
 - Optional display of organisation name in a non-interactive format
 
-Profile/Settings must include:
+Settings must include:
 
 - User-level date format (locale) control
+- User-level theme mode control (Light / Dark)
 - User-level calendar visible window controls (start and end time)
+- Admin-only colour management:
+  - per-user assignee colour selection
+  - organization default colour selection for unassigned items
+  - compact fixed swatch palette (around 8-10 options)
+  - each selector shows the current colour and expands to a swatch chooser on click
 
 ---
 
@@ -44,8 +50,9 @@ Profile/Settings must include:
 ### Structure
 
 - 7-day week view (Monday to Sunday)
-- Weekend days must be visible
-- Calendar time grid should default to a workday-focused visible window (08:00-20:00), user-adjustable in Profile/Settings
+- Weekend days must be visible by default
+- A calendar control can hide/show weekend columns without changing overall calendar width; weekday columns expand to fill available space when weekends are hidden
+- Calendar time grid should default to a workday-focused visible window (08:00-20:00), user-adjustable in Settings
 - Time grid must remain vertically scrollable to the full-day range (00:00 through end of day) even when a narrower visible window is configured
 - Each day has:
   - All-day section (top)
@@ -104,6 +111,7 @@ Each item must display:
 ### Visual Rules
 
 - Colour always represents assignee
+- Unassigned items use the organization default colour
 - Fixed must be visually distinct (e.g. red border or fill)
 - Complete must be visually distinct and still readable
 - Timed items should use a compact two-line text block when customer is present:
@@ -146,11 +154,11 @@ Opening an item displays a panel (side or modal) with:
 - On hold toggle
 - Cancelled toggle
 - Complete toggle
-- Date fields must use the shared calendar picker component used by week navigation controls
-
-Planned additions in later phases:
-
 - Delete button (admin only)
+- Read-only audit metadata:
+  - Created by / Created at
+  - Last edited by / Last edited at
+- Date fields must use the shared calendar picker component used by week navigation controls
 
 ### Behaviour
 
@@ -219,6 +227,8 @@ Planned additions in later phases:
 
 - Assignee defines colour
 - Only one assignee per item
+- Admins can manage per-user colours and organization default colour in Settings
+- Reserved status outline colours cannot be selected for user/default colours
 
 ---
 
@@ -292,8 +302,10 @@ Planned additions in later phases:
 - Previous and next week controls in the calendar panel (top right)
 - Current week shortcut in the calendar panel
 - Date picker jump control in the calendar panel to select any date and navigate to that week
+- Hide/show weekend toggle in the calendar panel
 - Calendar and bucket update together
 - Week/day labels and scheduler tooltip dates use the signed-in user's selected date locale
+- A visual divider should separate Friday from Saturday when weekends are visible
 - When search is active:
   - Previous/Current/Next week controls are highlighted when matching items exist in those weeks
   - Date picker control is highlighted when matching items exist in any week

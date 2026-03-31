@@ -29,6 +29,13 @@ export async function getDevBypassSession(): Promise<Session | null> {
     return null;
   }
 
+  const isProductionBuild =
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE === "phase-production-build";
+  if (isProductionBuild) {
+    return null;
+  }
+
   if (process.env.NODE_ENV === "production") {
     throw new Error("AUTH_DEV_BYPASS_MODE cannot be enabled in production");
   }

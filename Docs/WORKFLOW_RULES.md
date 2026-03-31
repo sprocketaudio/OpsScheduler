@@ -170,8 +170,11 @@ Complete indicates the work has been completed.
 
 ### Colour
 - Colour is derived from the assigned user
+- If an item is unassigned, the organization default colour is used
 - Colour cannot be manually set per item
 - Each user must have a unique colour
+- Organization default colour must not duplicate any user colour
+- User colours and organization default colour must not use reserved status outline colours (Fixed red, On hold brown, Cancelled gray, Complete green)
 
 ---
 

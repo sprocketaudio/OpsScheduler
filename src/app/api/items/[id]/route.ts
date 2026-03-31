@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
+import { UserRole } from "@prisma/client";
 import { z } from "zod";
 import { getServerAuthSession } from "@/server/auth/session";
+import { logAuditEvent } from "@/server/audit/log";
 import { prisma } from "@/server/db/client";
 
 const updateItemRequestSchema = z
@@ -33,6 +35,7 @@ function formatIsoTimeUtc(value: Date): string {
 async function getCurrentUserContext(userId: string): Promise<{
   id: string;
   organizationId: string;
+  role: UserRole;
 } | null> {
   const currentUser = await prisma.user.findUnique({
     where: {
@@ -42,6 +45,7 @@ async function getCurrentUserContext(userId: string): Promise<{
       id: true,
       active: true,
       organizationId: true,
+      role: true,
     },
   });
 
@@ -52,6 +56,7 @@ async function getCurrentUserContext(userId: string): Promise<{
   return {
     id: currentUser.id,
     organizationId: currentUser.organizationId,
+    role: currentUser.role,
   };
 }
 
@@ -119,6 +124,20 @@ export async function GET(
       onHold: true,
       cancelled: true,
       done: true,
+      createdAt: true,
+      updatedAt: true,
+      createdBy: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+      updatedBy: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -164,8 +183,21 @@ export async function GET(
         onHold: item.onHold,
         cancelled: item.cancelled,
         done: item.done,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+        createdBy: {
+          name: item.createdBy.name,
+          email: item.createdBy.email,
+        },
+        updatedBy: {
+          name: item.updatedBy.name,
+          email: item.updatedBy.email,
+        },
       },
       assignableUsers,
+      permissions: {
+        canDelete: currentUser.role === UserRole.admin,
+      },
     },
     {
       status: 200,
@@ -339,6 +371,15 @@ export async function PATCH(
     },
   });
 
+  logAuditEvent({
+    action: "item.update",
+    outcome: "success",
+    actorUserId: currentUser.id,
+    organizationId: currentUser.organizationId,
+    targetType: "work_item",
+    targetId: updatedItem.id,
+  });
+
   return Response.json(
     {
       item: {
@@ -356,6 +397,121 @@ export async function PATCH(
         onHold: updatedItem.onHold,
         cancelled: updatedItem.cancelled,
         done: updatedItem.done,
+      },
+    },
+    {
+      status: 200,
+    },
+  );
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  context: {
+    params: Promise<{
+      id: string;
+    }>;
+  },
+) {
+  const session = await getServerAuthSession();
+  if (!session?.user?.id) {
+    return Response.json(
+      {
+        error: "Authentication is required.",
+      },
+      {
+        status: 401,
+      },
+    );
+  }
+
+  const currentUser = await getCurrentUserContext(session.user.id);
+  if (!currentUser) {
+    return Response.json(
+      {
+        error: "Authenticated user is not active.",
+      },
+      {
+        status: 403,
+      },
+    );
+  }
+
+  const { id } = await context.params;
+  if (!id || id.trim().length === 0) {
+    return Response.json(
+      {
+        error: "Item id is required.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  if (currentUser.role !== UserRole.admin) {
+    logAuditEvent({
+      action: "item.delete",
+      outcome: "denied",
+      actorUserId: currentUser.id,
+      organizationId: currentUser.organizationId,
+      targetType: "work_item",
+      targetId: id,
+      metadata: {
+        reason: "requires_admin_role",
+      },
+    });
+
+    return Response.json(
+      {
+        error: "Only admins can delete items.",
+      },
+      {
+        status: 403,
+      },
+    );
+  }
+
+  const existingItem = await prisma.workItem.findFirst({
+    where: {
+      id,
+      organizationId: currentUser.organizationId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!existingItem) {
+    return Response.json(
+      {
+        error: "Item not found.",
+      },
+      {
+        status: 404,
+      },
+    );
+  }
+
+  await prisma.workItem.delete({
+    where: {
+      id: existingItem.id,
+    },
+  });
+
+  logAuditEvent({
+    action: "item.delete",
+    outcome: "success",
+    actorUserId: currentUser.id,
+    organizationId: currentUser.organizationId,
+    targetType: "work_item",
+    targetId: existingItem.id,
+  });
+
+  return Response.json(
+    {
+      item: {
+        id: existingItem.id,
       },
     },
     {

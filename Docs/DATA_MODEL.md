@@ -43,6 +43,7 @@ Fields:
 
 - id (string, primary key)
 - name (string, required)
+- default_colour (string, required, default `#2563eb`)
 - created_at (timestamp)
 - updated_at (timestamp)
 
@@ -61,6 +62,7 @@ Fields:
 - role (enum: admin, user)
 - profile_image_url (string, optional)
 - date_locale (string, required, default `en-GB`)
+- ui_theme (string, required, default `light`)
 - timezone (string, optional)
 - calendar_visible_start_time (string, required, default `08:00:00`)
 - calendar_visible_end_time (string, required, default `20:00:00`)
@@ -75,7 +77,9 @@ Rules:
 
 - Email must be unique
 - Colour must be unique across all users
+- User and organization default colours must not use reserved status outline colours
 - date_locale must be one of the supported UI locales
+- ui_theme must be one of the supported UI theme values (`light`, `dark`)
 - Each user belongs to exactly one organization
 - Only active users can access the system
 

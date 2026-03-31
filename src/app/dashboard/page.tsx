@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
-import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { SignOutButton } from "@/features/auth/sign-out-button";
-import { DashboardFilters } from "@/features/scheduler/dashboard-filters";
+import { RouteButton } from "@/features/navigation/route-button";
+import { DashboardFilters, MyItemsFilterButton } from "@/features/scheduler/dashboard-filters";
 import { SchedulerWorkspace } from "@/features/scheduler/scheduler-workspace";
 import { resolveVisibleWindow } from "@/features/scheduler/visible-window";
 import { normalizeDateLocale } from "@/features/settings/date-locale";
@@ -154,6 +153,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       dateLocale: true,
       calendarVisibleStartTime: true,
       calendarVisibleEndTime: true,
+      organization: {
+        select: {
+          defaultColour: true,
+        },
+      },
     },
   });
 
@@ -166,6 +170,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     referenceDate: currentWeekStart,
   });
 
+  const defaultAssigneeColour = currentUser.organization.defaultColour;
   const dateLocale = normalizeDateLocale(currentUser.dateLocale);
   const weekLabel = formatWeekCommencingLabel(selectedWeekStart, dateLocale);
   const searchFilters: Prisma.WorkItemWhereInput[] = [];
@@ -301,6 +306,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     const matchesMine = !myItemsOnly || item.assigneeId === session.user.id;
 
     const assigneeColour = item.assignee?.colour;
+    const displayColour = assigneeColour ?? defaultAssigneeColour;
 
     if (item.startTime) {
       calendarEvents.push({
@@ -311,8 +317,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         end: item.endTime
           ? combineDateAndTime(item.endDate ?? item.startDate, item.endTime)
           : undefined,
-        backgroundColor: assigneeColour ?? undefined,
-        borderColor: assigneeColour ?? undefined,
+        backgroundColor: displayColour,
+        borderColor: displayColour,
         extendedProps: {
           fixed: item.fixed,
           onHold: item.onHold,
@@ -333,8 +339,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       allDay: true,
       start: formatIsoDateUtc(item.startDate),
       end: item.endDate ? formatIsoDateUtc(addDaysUtc(item.endDate, 1)) : undefined,
-      backgroundColor: assigneeColour ?? undefined,
-      borderColor: assigneeColour ?? undefined,
+      backgroundColor: displayColour,
+      borderColor: displayColour,
       extendedProps: {
         fixed: item.fixed,
         onHold: item.onHold,
@@ -356,21 +362,25 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <main className="min-h-screen">
       <header className="border-b">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">OpsScheduler</p>
-              <h1 className="text-xl font-semibold">Week commencing {weekLabel}</h1>
-            </div>
+            <p className="text-sm text-muted-foreground">OpsScheduler</p>
             <p className="text-sm text-muted-foreground">Signed in as {currentUser.email}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <DashboardFilters initialSearch={searchQuery} myItemsOnly={myItemsOnly} />
-            <Link href="/settings" className={buttonVariants({ variant: "outline" })}>
-              Profile
-            </Link>
-            <SignOutButton />
+          <div className="grid gap-2 2xl:grid-cols-[minmax(0,1fr)_19rem] 2xl:items-center 2xl:gap-4">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <h1 className="text-xl font-semibold">Week commencing {weekLabel}</h1>
+              <div className="ml-auto flex min-w-0 items-center justify-end">
+                <DashboardFilters initialSearch={searchQuery} myItemsOnly={myItemsOnly} showMyItemsButton={false} />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <MyItemsFilterButton myItemsOnly={myItemsOnly} />
+              <RouteButton href="/settings" label="Settings" />
+              <SignOutButton />
+            </div>
           </div>
         </div>
       </header>
@@ -378,6 +388,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <SchedulerWorkspace
         bucketItems={bucketItems.map((item) => ({
           ...item,
+          defaultColour: defaultAssigneeColour,
           matchesMine: !myItemsOnly || item.assigneeId === session.user.id,
           matchesSearch:
             !normalizedSearch ||

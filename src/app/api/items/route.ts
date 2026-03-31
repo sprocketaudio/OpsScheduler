@@ -7,6 +7,7 @@ import {
   startOfWeekMondayUtc,
 } from "@/features/scheduler/week";
 import { getServerAuthSession } from "@/server/auth/session";
+import { logAuditEvent } from "@/server/audit/log";
 import { prisma } from "@/server/db/client";
 import { consumeFixedWindowRateLimit } from "@/server/security/rate-limit";
 
@@ -289,6 +290,18 @@ export async function POST(request: NextRequest) {
       targetWeek: true,
       startDate: true,
       startTime: true,
+    },
+  });
+
+  logAuditEvent({
+    action: "item.create",
+    outcome: "success",
+    actorUserId: currentUser.id,
+    organizationId: currentUser.organizationId,
+    targetType: "work_item",
+    targetId: createdItem.id,
+    metadata: {
+      placementKind: parsedRequest.data.placement?.kind ?? "default_bucket",
     },
   });
 

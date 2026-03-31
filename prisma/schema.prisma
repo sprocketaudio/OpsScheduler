@@ -12,12 +12,13 @@ enum UserRole {
 }
 
 model Organization {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  users     User[]
-  workItems WorkItem[]
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
+  id           String     @id @default(cuid())
+  name         String     @unique
+  defaultColour String    @default("#2563eb") @map("default_colour")
+  users        User[]
+  workItems    WorkItem[]
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 }
 
 model User {
@@ -27,6 +28,7 @@ model User {
   emailVerified            DateTime?
   image                    String?      @map("profile_image_url")
   dateLocale               String       @default("en-GB") @map("date_locale") @db.VarChar(10)
+  uiTheme                  String       @default("light") @map("ui_theme") @db.VarChar(16)
   timezone                 String?
   calendarVisibleStartTime String       @default("08:00:00") @map("calendar_visible_start_time") @db.VarChar(8)
   calendarVisibleEndTime   String       @default("20:00:00") @map("calendar_visible_end_time") @db.VarChar(8)

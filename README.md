@@ -79,7 +79,7 @@ pnpm prisma:validate
 pnpm dev
 ```
 
-Note: Phases 7, 8, and 9 are implemented, including drag-and-drop scheduling, detail-panel editing, assignee selection, and fixed/done states.
+Note: MVP work through Phase 13 (Polish and Stability) is implemented locally. Phase 14 (deployment hardening and rollout) remains pending.
 
 ---
 
@@ -114,7 +114,7 @@ Notes:
 
 - Keep `AUTH_DEV_BYPASS_MODE=off` for normal magic-link authentication.
 - If bypass mode is enabled, the app auto-authenticates an active database user by role.
-- Bypass mode is blocked in production.
+- Bypass mode is blocked in production runtime and ignored during production build prerender.
 
 ---
 

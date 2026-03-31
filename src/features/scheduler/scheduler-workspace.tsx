@@ -65,6 +65,7 @@ export function SchedulerWorkspace({
   const [panelRefreshToken, setPanelRefreshToken] = useState(0);
   const [scheduleSync, setScheduleSync] = useState<(ScheduleSyncPayload & { seq: number }) | null>(null);
   const [statusSync, setStatusSync] = useState<(StatusSyncPayload & { seq: number }) | null>(null);
+  const [showWeekends, setShowWeekends] = useState(true);
   const selectedItemIdRef = useRef<string | null>(selectedItemId);
   const matchWeekSet = useMemo(() => new Set(matchWeekIsos), [matchWeekIsos]);
   const previousWeekHasSearchMatch = searchActive && matchWeekSet.has(previousWeekIso);
@@ -74,6 +75,22 @@ export function SchedulerWorkspace({
   useEffect(() => {
     setWeekJumpDate(weekStartIso);
   }, [weekStartIso]);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("scheduler.showWeekends");
+    if (saved === "false") {
+      setShowWeekends(false);
+      return;
+    }
+
+    if (saved === "true") {
+      setShowWeekends(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("scheduler.showWeekends", showWeekends ? "true" : "false");
+  }, [showWeekends]);
 
   useEffect(() => {
     selectedItemIdRef.current = selectedItemId;
@@ -121,9 +138,9 @@ export function SchedulerWorkspace({
     <>
       <section className="mx-auto grid w-full max-w-7xl gap-4 p-4 2xl:grid-cols-[minmax(0,1fr)_19rem]">
         <Card>
-          <CardHeader>
+          <CardHeader className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle>Weekly Calendar View</CardTitle>
+              <CardTitle className="leading-8">Weekly Calendar View</CardTitle>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button
                   type="button"
@@ -172,9 +189,19 @@ export function SchedulerWorkspace({
                 />
               </div>
             </div>
-            <CardDescription>
-              Scheduled items for the selected week ({calendarEvents.length}).
-            </CardDescription>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardDescription className="m-0">
+                Scheduled items for the selected week ({calendarEvents.length}).
+              </CardDescription>
+              <Button
+                type="button"
+                variant="link"
+                className="h-6 px-0 text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setShowWeekends((value) => !value)}
+              >
+                {showWeekends ? "Hide weekend <" : "Show weekend >"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <SchedulerCalendar
@@ -184,6 +211,7 @@ export function SchedulerWorkspace({
               searchActive={searchActive}
               visibleEndTime={visibleEndTime}
               visibleStartTime={visibleStartTime}
+              showWeekends={showWeekends}
               weekStartIso={weekStartIso}
               onItemSelect={handleItemSelect}
               onScheduleSync={handleScheduleSync}

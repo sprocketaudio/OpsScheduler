@@ -89,6 +89,7 @@ The intended workflow is:
 ### Scheduling
 - Weekly calendar view
 - Weekend visibility
+- Optional hide/show weekend toggle in calendar controls
 - Previous week, next week, and current week navigation
 - Weekly bucket for unscheduled work
 - Drag from bucket into calendar
@@ -120,7 +121,8 @@ The intended workflow is:
 - Long rolling sessions
 - Admin and user roles
 - Admin-managed unique user colours
-- User profile settings including display name, timezone, profile picture, personal date format, and personal calendar visible window
+- Admin-managed organization default colour for unassigned items
+- Dedicated settings access for personal date format, personal theme mode (light/dark), personal calendar visible window, and admin-gated configuration controls
 
 ### Audit and Safety
 - Created at and updated at timestamps
@@ -177,6 +179,7 @@ Each work item must support:
 - Users can create and edit normal work items
 - Admins can manage users, colours, and delete items
 - User colours must be unique across the system
+- User/default colours must not use reserved status colours (Fixed, On hold, Cancelled, Complete outlines)
 
 ## 12. Success Criteria
 

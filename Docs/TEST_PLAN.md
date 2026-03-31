@@ -242,7 +242,7 @@ Used for:
 ---
 
 ### Test: Calendar visible workday window can be adjusted
-- Open Profile/Settings
+- Open Settings
 - Set visible start and end times in calendar view settings
 - Save settings
 - Return to dashboard
@@ -265,7 +265,7 @@ Used for:
 ---
 
 ### Test: User date format locale can be adjusted
-- Open Profile/Settings
+- Open Settings
 - Set date format locale (for example UK or US)
 - Save settings
 - Return to dashboard
@@ -273,6 +273,21 @@ Used for:
 ### Expected Result
 - Week/day labels and scheduler tooltip date formatting update to the selected locale
 - Date locale persists across week navigation and session refresh
+
+---
+
+### Test: User theme mode can be adjusted
+- Open Settings
+- Set theme to Dark
+- Save settings
+- Navigate between dashboard and settings
+- Set theme back to Light
+- Save settings
+
+### Expected Result
+- Dark mode applies across the app when selected
+- Light mode applies across the app when selected
+- Selected theme persists across page refresh and navigation
 
 ---
 
@@ -415,6 +430,18 @@ Used for:
 
 ---
 
+### Test: Detail panel audit metadata is shown
+- Open an existing item detail panel
+- Verify created/updated actor and timestamps are displayed
+- Edit the item and wait for autosave
+- Drag or resize the same item while the panel is open
+
+### Expected Result
+- Panel shows Created by, Created at, Last edited by, and Last edited at values
+- Last edited metadata reflects the latest successful update
+
+---
+
 ## 5.7 Assignment
 
 ### Test: Assign user to item
@@ -442,6 +469,29 @@ Used for:
 ### Expected Result
 - Duplicate colour is rejected
 - Existing uniqueness rule is preserved
+
+---
+
+### Test: Admin can update user colours and default unassigned colour
+- Log in as admin
+- Open Settings
+- Open a colour selector, confirm the swatch chooser expands, and pick one or more user/default colours
+- Save settings
+
+### Expected Result
+- Changes persist successfully
+- Updated user colours appear on assigned items
+- Default colour appears on unassigned bucket/calendar items
+- Default colour cannot match any user colour
+
+---
+
+### Test: Reserved status colours are blocked in admin colour settings
+- In Settings as admin, attempt to set user/default colour to status outline colours
+
+### Expected Result
+- Save is rejected with a clear validation error
+- Existing colours remain unchanged
 
 ---
 
@@ -705,10 +755,33 @@ Used for:
 
 ### Test: Dev auth bypass is blocked in production
 - Set `AUTH_DEV_BYPASS_MODE=admin` with `NODE_ENV=production`
-- Attempt to start and access protected routes
+- Run `pnpm build`, then start and access protected routes
 
 ### Expected Result
-- Application fails fast with a clear configuration error
+- Production build succeeds without activating bypass mode during prerender
+- Production runtime does not grant bypass access and returns a clear configuration error when bypass is enabled
+
+---
+
+## 5.18 Audit Logging
+
+### Test: Sign-in audit events are emitted
+- Attempt sign-in with allowed and denied cases (unallowlisted or inactive user)
+- Inspect server logs
+
+### Expected Result
+- Structured audit events are emitted for sign-in outcomes
+- Events include action and outcome values without sensitive token data
+
+---
+
+### Test: Core item action audit events are emitted
+- Perform item create, edit, placement change, and delete actions
+- Inspect server logs
+
+### Expected Result
+- Structured audit events are emitted for each action
+- Events include actor, organisation scope, and target item identifiers
 
 ---
 

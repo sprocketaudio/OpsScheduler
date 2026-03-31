@@ -75,7 +75,10 @@ async function main() {
   const organization = await prisma.organization.upsert({
     where: { name: organizationName },
     update: {},
-    create: { name: organizationName },
+    create: {
+      name: organizationName,
+      defaultColour: "#2563eb",
+    },
   });
 
   const existingUsers = await prisma.user.findMany({

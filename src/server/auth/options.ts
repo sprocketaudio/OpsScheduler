@@ -2,6 +2,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions } from "next-auth";
 import EmailProvider from "next-auth/providers/email";
 import { Resend } from "resend";
+import { logAuditEvent } from "@/server/audit/log";
 import { prisma } from "@/server/db/client";
 
 function getRequiredEnv(name: string): string {
@@ -117,10 +118,25 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user }) {
       const candidateEmail = (user.email ?? "").trim().toLowerCase();
       if (!candidateEmail) {
+        logAuditEvent({
+          action: "auth.sign_in",
+          outcome: "denied",
+          metadata: {
+            reason: "missing_email",
+          },
+        });
         return false;
       }
 
       if (!approvedEmails.has(candidateEmail)) {
+        logAuditEvent({
+          action: "auth.sign_in",
+          outcome: "denied",
+          metadata: {
+            reason: "email_not_allowlisted",
+            email: candidateEmail,
+          },
+        });
         return false;
       }
 
@@ -135,12 +151,38 @@ export const authOptions: NextAuthOptions = {
       });
 
       if (!existingUser) {
+        logAuditEvent({
+          action: "auth.sign_in",
+          outcome: "denied",
+          metadata: {
+            reason: "user_not_provisioned",
+            email: candidateEmail,
+          },
+        });
         return false;
       }
 
       if (!existingUser.active) {
+        logAuditEvent({
+          action: "auth.sign_in",
+          outcome: "denied",
+          actorUserId: existingUser.id,
+          metadata: {
+            reason: "inactive_user",
+            email: candidateEmail,
+          },
+        });
         return false;
       }
+
+      logAuditEvent({
+        action: "auth.sign_in",
+        outcome: "success",
+        actorUserId: existingUser.id,
+        metadata: {
+          email: candidateEmail,
+        },
+      });
 
       return true;
     },

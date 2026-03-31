@@ -14,6 +14,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import dynamic from "next/dynamic";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { DateLocale } from "@/features/settings/date-locale";
@@ -44,6 +45,7 @@ type SchedulerCalendarProps = {
     seq: number;
   } | null;
   searchActive?: boolean;
+  showWeekends?: boolean;
   visibleEndTime: string;
   visibleStartTime: string;
   weekStartIso: string;
@@ -930,6 +932,7 @@ export function SchedulerCalendar({
   onItemSelect,
   onScheduleSync,
   searchActive = false,
+  showWeekends = true,
   statusSync = null,
   visibleEndTime,
   visibleStartTime,
@@ -939,6 +942,7 @@ export function SchedulerCalendar({
   const [quickAddDraft, setQuickAddDraft] = useState<QuickAddDraft | null>(null);
   const [quickAddTitle, setQuickAddTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPortalReady, setIsPortalReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [interactionError, setInteractionError] = useState<string | null>(null);
   const [hoverTooltip, setHoverTooltip] = useState<EventTooltipState | null>(null);
@@ -947,6 +951,30 @@ export function SchedulerCalendar({
     () => computeCalendarViewportHeight(visibleStartTime, visibleEndTime),
     [visibleEndTime, visibleStartTime],
   );
+
+  function openQuickAddAt(date: Date, allDay: boolean) {
+    const displayDate = new Intl.DateTimeFormat(dateLocale, {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+
+    const startTime = allDay ? null : formatLocalIsoTime(date);
+    const displayLabel = startTime ? `${displayDate} ${startTime.slice(0, 5)}` : displayDate;
+
+    setQuickAddDraft({
+      displayLabel,
+      startDate: formatLocalIsoDate(date),
+      startTime,
+    });
+    setQuickAddTitle("");
+    setErrorMessage(null);
+  }
+
+  useEffect(() => {
+    setIsPortalReady(true);
+  }, []);
 
   useEffect(() => {
     const visualMetaById = buildEventVisualMetaMap(events);
@@ -1030,26 +1058,7 @@ export function SchedulerCalendar({
       return;
     }
 
-    const date = info.date;
-    const displayDate = new Intl.DateTimeFormat(dateLocale, {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).format(date);
-
-    const startTime = info.allDay ? null : formatLocalIsoTime(date);
-    const displayLabel = startTime
-      ? `${displayDate} ${startTime.slice(0, 5)}`
-      : displayDate;
-
-    setQuickAddDraft({
-      displayLabel,
-      startDate: formatLocalIsoDate(date),
-      startTime,
-    });
-    setQuickAddTitle("");
-    setErrorMessage(null);
+    openQuickAddAt(info.date, info.allDay);
   }
 
   async function handleQuickAddSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1357,11 +1366,7 @@ export function SchedulerCalendar({
   }
 
   return (
-    <div className="space-y-2 rounded-md border p-2 [&_.fc-col-header-cell-cushion]:px-1 [&_.fc-col-header-cell-cushion]:text-[0.92rem] [&_.fc-col-header-cell-cushion]:whitespace-nowrap [&_.scheduler-weekend-cell]:bg-slate-200/75 [&_.scheduler-weekend-header]:bg-slate-300/80 [&_.fc-event]:cursor-grab [&_.fc-event_*]:cursor-grab [&_.fc-event.fc-event-dragging]:cursor-grabbing [&_.fc-event.fc-event-dragging_*]:cursor-grabbing [&_.fc-event.fc-event-resizing]:cursor-grabbing [&_.fc-event.fc-event-resizing_*]:cursor-grabbing [&_.fc-timegrid-event_.fc-event-main]:p-0 [&_.fc-timegrid-event_.fc-event-main-frame]:p-0 [&_.fc-timegrid-event_.fc-event-main-frame]:items-start [&_.fc-timegrid-event_.fc-event-main-frame]:justify-start">
-      <p className="text-sm text-muted-foreground">
-        Double-click an empty day or time slot to add an item in that location.
-      </p>
-
+    <div className="space-y-2 rounded-md border p-2 [--fc-border-color:rgb(148_163_184_/0.5)] dark:[--fc-border-color:rgb(71_85_105_/0.55)] dark:[&_.fc-timegrid-slot]:border-t-slate-600/35 [&_.fc-col-header-cell-cushion]:px-1 [&_.fc-col-header-cell-cushion]:text-[0.92rem] [&_.fc-col-header-cell-cushion]:whitespace-nowrap [&_.scheduler-weekend-cell]:bg-slate-200/75 dark:[&_.scheduler-weekend-cell]:bg-slate-800/50 [&_.scheduler-weekend-header]:bg-slate-300/80 dark:[&_.scheduler-weekend-header]:bg-slate-700/55 [&_.fc-day-sat]:border-l-2 [&_.fc-day-sat]:border-l-slate-400/80 dark:[&_.fc-day-sat]:border-l-slate-500/70 [&_.fc-scrollgrid]:transition-all [&_.fc-scrollgrid]:duration-200 [&_.fc-event]:cursor-grab [&_.fc-event_*]:cursor-grab [&_.fc-event.fc-event-dragging]:cursor-grabbing [&_.fc-event.fc-event-dragging_*]:cursor-grabbing [&_.fc-event.fc-event-resizing]:cursor-grabbing [&_.fc-event.fc-event-resizing_*]:cursor-grabbing [&_.fc-timegrid-event_.fc-event-main]:p-0 [&_.fc-timegrid-event_.fc-event-main-frame]:p-0 [&_.fc-timegrid-event_.fc-event-main-frame]:items-start [&_.fc-timegrid-event_.fc-event-main-frame]:justify-start">
       {interactionError ? <p className="text-sm text-destructive">{interactionError}</p> : null}
 
       <FullCalendar
@@ -1372,8 +1377,8 @@ export function SchedulerCalendar({
         initialView="timeGridWeek"
         initialDate={weekStartIso}
         firstDay={1}
-        weekends={true}
-        hiddenDays={[]}
+        weekends={showWeekends}
+        hiddenDays={showWeekends ? [] : [0, 6]}
         allDaySlot
         allDayText="All Day"
         editable
@@ -1412,35 +1417,38 @@ export function SchedulerCalendar({
         events={events}
       />
 
-      {hoverTooltip ? (
-        <div
-          className="pointer-events-none fixed z-50 w-[min(22rem,calc(100vw-1rem))] rounded-lg border border-slate-300/80 bg-white/98 p-3 text-[12px] shadow-xl ring-1 ring-black/5 backdrop-blur-sm"
-          style={{
-            left: hoverTooltip.left,
-            top: hoverTooltip.top,
-          }}
-        >
-          {hoverTooltip.content.timeLine ? (
-            <p className="text-[11px] font-medium text-slate-600">{hoverTooltip.content.timeLine}</p>
-          ) : null}
-          <p className="mt-1 text-[13px] font-semibold leading-snug text-slate-900">{hoverTooltip.content.title}</p>
-          {hoverTooltip.content.customer ? (
-            <p className="mt-1 leading-snug text-slate-800">
-              <span className="font-semibold">Customer:</span> {hoverTooltip.content.customer}
-            </p>
-          ) : null}
-          {hoverTooltip.content.status ? (
-            <p className="mt-1 leading-snug text-slate-800">
-              <span className="font-semibold">Status:</span> {hoverTooltip.content.status}
-            </p>
-          ) : null}
-          {hoverTooltip.content.notes ? (
-            <p className="mt-2 whitespace-pre-wrap break-words text-[11px] leading-snug text-slate-600">
-              <span className="font-semibold text-slate-700">Notes:</span> {hoverTooltip.content.notes}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      {isPortalReady && hoverTooltip
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-50 w-[min(22rem,calc(100vw-1rem))] rounded-lg border border-slate-300/80 bg-white/98 p-3 text-[12px] shadow-xl ring-1 ring-black/5 backdrop-blur-sm"
+              style={{
+                left: hoverTooltip.left,
+                top: hoverTooltip.top,
+              }}
+            >
+              {hoverTooltip.content.timeLine ? (
+                <p className="text-[11px] font-medium text-slate-600">{hoverTooltip.content.timeLine}</p>
+              ) : null}
+              <p className="mt-1 text-[13px] font-semibold leading-snug text-slate-900">{hoverTooltip.content.title}</p>
+              {hoverTooltip.content.customer ? (
+                <p className="mt-1 leading-snug text-slate-800">
+                  <span className="font-semibold">Customer:</span> {hoverTooltip.content.customer}
+                </p>
+              ) : null}
+              {hoverTooltip.content.status ? (
+                <p className="mt-1 leading-snug text-slate-800">
+                  <span className="font-semibold">Status:</span> {hoverTooltip.content.status}
+                </p>
+              ) : null}
+              {hoverTooltip.content.notes ? (
+                <p className="mt-2 whitespace-pre-wrap break-words text-[11px] leading-snug text-slate-600">
+                  <span className="font-semibold text-slate-700">Notes:</span> {hoverTooltip.content.notes}
+                </p>
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
 
       {quickAddDraft ? (
         <div

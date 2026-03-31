@@ -12,6 +12,7 @@ export type BucketPanelItem = {
   } | null;
   cancelled: boolean;
   customer: string | null;
+  defaultColour?: string;
   done: boolean;
   fixed: boolean;
   id: string;
@@ -116,6 +117,7 @@ export function BucketPanel({
         const itemId = element.dataset.itemId;
         const itemTitle = element.dataset.itemTitle;
         const itemCustomer = element.dataset.itemCustomer;
+        const itemColour = element.dataset.itemColour;
 
         if (!itemId || !itemTitle) {
           return {};
@@ -124,6 +126,8 @@ export function BucketPanel({
         return {
           id: itemId,
           title: itemTitle,
+          backgroundColor: itemColour || undefined,
+          borderColor: itemColour || undefined,
           extendedProps: {
             customer: itemCustomer || null,
           },
@@ -192,6 +196,7 @@ export function BucketPanel({
             const itemDimmedByMine = mineActive && item.matchesMine === false;
             const itemIsDimmed = itemDimmedBySearch || itemDimmedByMine;
             const itemIsProminent = !itemIsDimmed && (searchActive || mineActive);
+            const displayColour = item.assignee?.colour ?? item.defaultColour;
             return (
               <div
                 key={item.id}
@@ -199,6 +204,7 @@ export function BucketPanel({
                 data-item-id={item.id}
                 data-item-title={item.title}
                 data-item-customer={item.customer ?? ""}
+                data-item-colour={displayColour ?? ""}
                 onPointerDown={(event) => handlePointerDown(item.id, event)}
                 onPointerUp={(event) => handlePointerUp(item.id, event)}
                 onPointerCancel={() => handlePointerCancel(item.id)}
@@ -215,14 +221,14 @@ export function BucketPanel({
                 {item.customer ? (
                   <p className="text-sm text-muted-foreground">Customer: {item.customer}</p>
                 ) : null}
-                {item.assignee ? (
+                {displayColour ? (
                   <div className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground">
                     <span
                       className="size-2 rounded-full"
-                      style={{ backgroundColor: item.assignee.colour }}
+                      style={{ backgroundColor: displayColour }}
                       aria-hidden="true"
                     />
-                    <span>{item.assignee.name || item.assignee.email}</span>
+                    <span>{item.assignee ? (item.assignee.name || item.assignee.email) : "Unassigned"}</span>
                   </div>
                 ) : null}
               </div>

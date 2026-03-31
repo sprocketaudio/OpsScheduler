@@ -1,14 +1,15 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   convertIsoTimeToInputValue,
   resolveVisibleWindow,
 } from "@/features/scheduler/visible-window";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { RouteButton } from "@/features/navigation/route-button";
+import { AdminColourSettingsForm } from "@/features/settings/admin-colour-settings-form";
 import { normalizeDateLocale } from "@/features/settings/date-locale";
 import { CalendarPreferencesForm } from "@/features/settings/calendar-preferences-form";
+import { normalizeThemePreference } from "@/features/settings/theme";
 import { getServerAuthSession } from "@/server/auth/session";
 import { prisma } from "@/server/db/client";
 
@@ -24,9 +25,17 @@ export default async function SettingsPage() {
     },
     select: {
       email: true,
+      role: true,
+      organizationId: true,
       dateLocale: true,
+      uiTheme: true,
       calendarVisibleStartTime: true,
       calendarVisibleEndTime: true,
+      organization: {
+        select: {
+          defaultColour: true,
+        },
+      },
     },
   });
 
@@ -39,26 +48,44 @@ export default async function SettingsPage() {
     currentUser.calendarVisibleEndTime,
   );
 
+  const adminUsers =
+    currentUser.role === "admin"
+      ? await prisma.user.findMany({
+          where: {
+            organizationId: currentUser.organizationId,
+            active: true,
+          },
+          orderBy: [{ name: "asc" }, { email: "asc" }],
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            colour: true,
+          },
+        })
+      : [];
+
   return (
     <main className="min-h-screen">
       <header className="border-b">
-        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 p-4">
-          <div className="space-y-1">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">OpsScheduler</p>
-            <h1 className="text-xl font-semibold">Profile settings</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm text-muted-foreground">Signed in as {currentUser.email}</p>
-            <Link href="/dashboard" className={buttonVariants({ variant: "outline" })}>
-              Back to dashboard
-            </Link>
-            <SignOutButton />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-xl font-semibold">Settings</h1>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <RouteButton href="/dashboard" label="Back to dashboard" />
+              <SignOutButton />
+            </div>
           </div>
         </div>
       </header>
 
-      <section className="mx-auto w-full max-w-4xl p-4">
-        <Card>
+      <section className="mx-auto w-full max-w-7xl p-4">
+        <Card className="mb-4">
           <CardHeader>
             <CardTitle>Display and calendar preferences</CardTitle>
             <CardDescription>
@@ -68,11 +95,29 @@ export default async function SettingsPage() {
           <CardContent>
             <CalendarPreferencesForm
               initialDateLocale={normalizeDateLocale(currentUser.dateLocale)}
+              initialTheme={normalizeThemePreference(currentUser.uiTheme)}
               initialVisibleStartTime={convertIsoTimeToInputValue(visibleStartTime)}
               initialVisibleEndTime={convertIsoTimeToInputValue(visibleEndTime)}
             />
           </CardContent>
         </Card>
+
+        {currentUser.role === "admin" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin colour settings</CardTitle>
+              <CardDescription>
+                Manage colours for users and the default colour for unassigned items.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AdminColourSettingsForm
+                initialDefaultColour={currentUser.organization.defaultColour}
+                initialUsers={adminUsers}
+              />
+            </CardContent>
+          </Card>
+        ) : null}
       </section>
     </main>
   );

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { parseWeekParamToMondayUtc } from "@/features/scheduler/week";
 import { getServerAuthSession } from "@/server/auth/session";
+import { logAuditEvent } from "@/server/audit/log";
 import { prisma } from "@/server/db/client";
 import { consumeFixedWindowRateLimit } from "@/server/security/rate-limit";
 
@@ -310,6 +311,18 @@ export async function PATCH(
         },
       });
 
+      logAuditEvent({
+        action: "item.update_placement",
+        outcome: "success",
+        actorUserId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        targetType: "work_item",
+        targetId: existingItem.id,
+        metadata: {
+          placementKind: "bucket",
+        },
+      });
+
       return Response.json(
         {
           item: {
@@ -335,6 +348,18 @@ export async function PATCH(
         endTime: resolved.endTime,
         targetWeek: resolved.targetWeek ?? existingItem.targetWeek,
         updatedById: currentUser.id,
+      },
+    });
+
+    logAuditEvent({
+      action: "item.update_placement",
+      outcome: "success",
+      actorUserId: currentUser.id,
+      organizationId: currentUser.organizationId,
+      targetType: "work_item",
+      targetId: existingItem.id,
+      metadata: {
+        placementKind: "calendar",
       },
     });
 

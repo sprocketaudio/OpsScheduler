@@ -5,20 +5,24 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DATE_LOCALE_VALUES, type DateLocale } from "@/features/settings/date-locale";
+import { THEME_PREFERENCE_VALUES, type ThemePreference } from "@/features/settings/theme";
 
 type CalendarPreferencesFormProps = {
   initialDateLocale: DateLocale;
+  initialTheme: ThemePreference;
   initialVisibleEndTime: string;
   initialVisibleStartTime: string;
 };
 
 export function CalendarPreferencesForm({
   initialDateLocale,
+  initialTheme,
   initialVisibleEndTime,
   initialVisibleStartTime,
 }: CalendarPreferencesFormProps) {
   const router = useRouter();
   const [dateLocale, setDateLocale] = useState<DateLocale>(initialDateLocale);
+  const [uiTheme, setUiTheme] = useState<ThemePreference>(initialTheme);
   const [visibleStartTime, setVisibleStartTime] = useState(initialVisibleStartTime);
   const [visibleEndTime, setVisibleEndTime] = useState(initialVisibleEndTime);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +44,7 @@ export function CalendarPreferencesForm({
         },
         body: JSON.stringify({
           dateLocale,
+          uiTheme,
           calendarVisibleStartTime: visibleStartTime,
           calendarVisibleEndTime: visibleEndTime,
         }),
@@ -60,7 +65,8 @@ export function CalendarPreferencesForm({
         return;
       }
 
-      setSuccessMessage("Profile settings saved.");
+      document.documentElement.classList.toggle("dark", uiTheme === "dark");
+      setSuccessMessage("Settings saved.");
       router.refresh();
       return;
     } catch {
@@ -87,6 +93,25 @@ export function CalendarPreferencesForm({
           {DATE_LOCALE_VALUES.map((locale) => (
             <option key={locale} value={locale}>
               {locale === "en-GB" ? "UK (DD/MM/YYYY)" : "US (MM/DD/YYYY)"}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid gap-1.5 sm:max-w-xs">
+        <label htmlFor="theme-preference" className="text-sm font-medium">
+          Theme
+        </label>
+        <select
+          id="theme-preference"
+          value={uiTheme}
+          onChange={(event) => setUiTheme(event.target.value as ThemePreference)}
+          disabled={isSubmitting}
+          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {THEME_PREFERENCE_VALUES.map((themeValue) => (
+            <option key={themeValue} value={themeValue}>
+              {themeValue === "dark" ? "Dark" : "Light"}
             </option>
           ))}
         </select>

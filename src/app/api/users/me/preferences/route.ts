@@ -2,12 +2,14 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { normalizeIsoTime, toSeconds } from "@/features/scheduler/visible-window";
 import { DATE_LOCALE_VALUES } from "@/features/settings/date-locale";
+import { THEME_PREFERENCE_VALUES } from "@/features/settings/theme";
 import { getServerAuthSession } from "@/server/auth/session";
 import { prisma } from "@/server/db/client";
 
 const userPreferencesUpdateSchema = z
   .object({
     dateLocale: z.enum(DATE_LOCALE_VALUES).optional(),
+    uiTheme: z.enum(THEME_PREFERENCE_VALUES).optional(),
     calendarVisibleStartTime: z.string().trim().min(1).max(8),
     calendarVisibleEndTime: z.string().trim().min(1).max(8),
   })
@@ -115,11 +117,13 @@ export async function PATCH(request: NextRequest) {
     },
     data: {
       dateLocale: parsedRequest.data.dateLocale ?? undefined,
+      uiTheme: parsedRequest.data.uiTheme ?? undefined,
       calendarVisibleStartTime: visibleStartTime,
       calendarVisibleEndTime: visibleEndTime,
     },
     select: {
       dateLocale: true,
+      uiTheme: true,
       calendarVisibleStartTime: true,
       calendarVisibleEndTime: true,
     },

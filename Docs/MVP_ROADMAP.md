@@ -319,6 +319,9 @@ This phase is not complete until it satisfies the Definition of Done in AGENTS.m
 
 ## 14. Phase 12: Permissions and Admin
 
+### Status
+- Completed on March 30, 2026
+
 ### Objectives
 - Finalise access control
 
@@ -338,6 +341,9 @@ This phase is not complete until it satisfies the Definition of Done in AGENTS.m
 ---
 
 ## 15. Phase 13: Polish and Stability
+
+### Status
+- Completed on March 31, 2026
 
 ### Objectives
 - Prepare for real use

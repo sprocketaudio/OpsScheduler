@@ -141,8 +141,9 @@ For MVP:
   - user login
   - item creation
   - item updates
+  - item placement updates
   - deletions
-- Audit logging for auth and core business actions is mandatory for MVP hardening (implemented in later phase)
+- Audit logging for auth and core business actions is mandatory for MVP hardening and is implemented as structured server audit events
 
 - Logs must not contain sensitive data
 - Logging should support debugging but remain minimal

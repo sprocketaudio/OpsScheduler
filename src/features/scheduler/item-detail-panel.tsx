@@ -23,6 +23,19 @@ type ItemDetailResponse = {
     startTime: string | null;
     targetWeek: string;
     title: string;
+    createdAt: string;
+    updatedAt: string;
+    createdBy: {
+      email: string;
+      name: string | null;
+    };
+    updatedBy: {
+      email: string;
+      name: string | null;
+    };
+  };
+  permissions: {
+    canDelete: boolean;
   };
   assignableUsers: Array<{
     colour: string;
@@ -30,6 +43,19 @@ type ItemDetailResponse = {
     id: string;
     name: string;
   }>;
+};
+
+type ItemAuditInfo = {
+  createdAt: string;
+  createdBy: {
+    email: string;
+    name: string | null;
+  };
+  updatedAt: string;
+  updatedBy: {
+    email: string;
+    name: string | null;
+  };
 };
 
 type ItemDetailPanelProps = {
@@ -89,6 +115,27 @@ function formatTimeApiValue(value: string): string | undefined {
   }
 
   return trimmed;
+}
+
+function formatAuditActor(actor: { email: string; name: string | null }): string {
+  const normalizedName = actor.name?.trim() ?? "";
+  if (normalizedName.length === 0) {
+    return actor.email;
+  }
+
+  return `${normalizedName} (${actor.email})`;
+}
+
+function formatAuditDateTime(value: string, dateLocale: DateLocale): string {
+  const parsedValue = new Date(value);
+  if (Number.isNaN(parsedValue.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(dateLocale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsedValue);
 }
 
 function deriveWeekMondayIso(dateIso: string): string {
@@ -165,6 +212,9 @@ export function ItemDetailPanel({
 }: ItemDetailPanelProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isAuditExpanded, setIsAuditExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [title, setTitle] = useState("");
   const [customer, setCustomer] = useState("");
@@ -179,12 +229,41 @@ export function ItemDetailPanel({
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("");
   const [assignableUsers, setAssignableUsers] = useState<ItemDetailResponse["assignableUsers"]>([]);
+  const [auditInfo, setAuditInfo] = useState<ItemAuditInfo | null>(null);
+  const [canDelete, setCanDelete] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSavedDraft, setLastSavedDraft] = useState<ItemDraft | null>(null);
   const activeItemIdRef = useRef<string | null>(itemId);
   const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveSequenceRef = useRef(0);
+  const processedScheduleSyncRef = useRef<{ itemId: string; seq: number } | null>(null);
+
+  const refreshAuditInfo = useCallback(async (targetItemId: string) => {
+    try {
+      const response = await fetch(`/api/items/${targetItemId}?auditRefresh=${Date.now()}`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = (await response.json()) as ItemDetailResponse;
+      if (activeItemIdRef.current !== targetItemId) {
+        return;
+      }
+
+      setAuditInfo({
+        createdAt: payload.item.createdAt,
+        createdBy: payload.item.createdBy,
+        updatedAt: payload.item.updatedAt,
+        updatedBy: payload.item.updatedBy,
+      });
+    } catch {
+      // Ignore audit-only refresh errors and keep existing values.
+    }
+  }, []);
 
   const currentDraft: ItemDraft = useMemo(
     () => ({
@@ -352,6 +431,7 @@ export function ItemDetailPanel({
           setLastSavedDraft(draft);
           setSaveStatus("saved");
           setErrorMessage(null);
+          void refreshAuditInfo(activeItemId);
           router.refresh();
         }
       } catch {
@@ -365,17 +445,31 @@ export function ItemDetailPanel({
         }
       }
     },
-    [itemId, onStatusSync, router],
+    [itemId, onStatusSync, refreshAuditInfo, router],
   );
 
   useEffect(() => {
     activeItemIdRef.current = itemId;
+    setShowDeleteConfirm(false);
   }, [itemId, refreshToken]);
 
   useEffect(() => {
     if (!itemId || !scheduleSync || scheduleSync.itemId !== itemId) {
       return;
     }
+
+    if (
+      processedScheduleSyncRef.current &&
+      processedScheduleSyncRef.current.itemId === scheduleSync.itemId &&
+      processedScheduleSyncRef.current.seq === scheduleSync.seq
+    ) {
+      return;
+    }
+
+    processedScheduleSyncRef.current = {
+      itemId: scheduleSync.itemId,
+      seq: scheduleSync.seq,
+    };
 
     if (autosaveTimeoutRef.current) {
       clearTimeout(autosaveTimeoutRef.current);
@@ -413,8 +507,10 @@ export function ItemDetailPanel({
     });
     setSaveStatus("saved");
     setErrorMessage(null);
+    void refreshAuditInfo(itemId);
   }, [
     itemId,
+    refreshAuditInfo,
     scheduleSync,
     title,
     customer,
@@ -433,10 +529,16 @@ export function ItemDetailPanel({
   useEffect(() => {
     if (!itemId) {
       setIsLoading(false);
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      setIsAuditExpanded(false);
       setIsSaving(false);
+      setAuditInfo(null);
+      setCanDelete(false);
       setSaveStatus("idle");
       setErrorMessage(null);
       setLastSavedDraft(null);
+      processedScheduleSyncRef.current = null;
       return;
     }
 
@@ -446,6 +548,7 @@ export function ItemDetailPanel({
       setIsLoading(true);
       setErrorMessage(null);
       setSaveStatus("idle");
+      setAuditInfo(null);
 
       try {
         const response = await fetch(`/api/items/${itemId}?refresh=${refreshToken}`, {
@@ -500,6 +603,13 @@ export function ItemDetailPanel({
           setEndTime(loadedDraft.endTime);
           setLastSavedDraft(loadedDraft);
           setAssignableUsers(payload.assignableUsers);
+          setAuditInfo({
+            createdAt: payload.item.createdAt,
+            createdBy: payload.item.createdBy,
+            updatedAt: payload.item.updatedAt,
+            updatedBy: payload.item.updatedBy,
+          });
+          setCanDelete(payload.permissions.canDelete);
           setSaveStatus("idle");
         }
       } catch {
@@ -568,6 +678,8 @@ export function ItemDetailPanel({
   const effectiveEndDate = startDate ? endDate || startDate : "";
   const statusLabel = isLoading
     ? "Loading..."
+    : isDeleting
+      ? "Deleting..."
     : isSaving
       ? "Saving..."
       : saveStatus === "error"
@@ -577,6 +689,48 @@ export function ItemDetailPanel({
           : saveStatus === "saved"
             ? "Saved"
             : "All changes saved";
+  const createdByLabel = auditInfo ? formatAuditActor(auditInfo.createdBy) : "-";
+  const updatedByLabel = auditInfo ? formatAuditActor(auditInfo.updatedBy) : "-";
+  const createdAtLabel = auditInfo ? formatAuditDateTime(auditInfo.createdAt, dateLocale) : "-";
+  const updatedAtLabel = auditInfo ? formatAuditDateTime(auditInfo.updatedAt, dateLocale) : "-";
+
+  async function handleDelete() {
+    if (!itemId || !canDelete || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(`/api/items/${itemId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        let error = "Unable to delete item right now.";
+        try {
+          const payload = (await response.json()) as { error?: string };
+          if (payload.error) {
+            error = payload.error;
+          }
+        } catch {
+          // Keep generic message.
+        }
+
+        setErrorMessage(error);
+        return;
+      }
+
+      setShowDeleteConfirm(false);
+      onClose();
+      router.refresh();
+    } catch {
+      setErrorMessage("Unable to delete item right now.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   if (!itemId) {
     return null;
@@ -590,11 +744,11 @@ export function ItemDetailPanel({
       aria-label="Item detail panel"
     >
       <aside
-        className="pointer-events-auto h-full w-full max-w-md overflow-y-auto border-l bg-background p-4 shadow-xl"
+        className="pointer-events-auto relative h-full w-full max-w-md overflow-y-auto border-l bg-background p-4 shadow-xl"
       >
         <div className="mb-4 flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Item details</h2>
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+          <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isDeleting}>
             Close
           </Button>
         </div>
@@ -776,11 +930,92 @@ export function ItemDetailPanel({
               </div>
             </div>
 
-            <p className="text-right text-xs text-muted-foreground">{statusLabel}</p>
+            <div className="grid gap-2 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Audit</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setIsAuditExpanded((previous) => !previous)}
+                >
+                  {isAuditExpanded ? "Hide" : "Show"}
+                </Button>
+              </div>
+              {isAuditExpanded ? (
+                <dl className="grid grid-cols-[8.25rem,1fr] gap-x-2 gap-y-1 text-xs">
+                  <dt className="text-muted-foreground">Created by</dt>
+                  <dd className="truncate">{createdByLabel}</dd>
+                  <dt className="text-muted-foreground">Created at</dt>
+                  <dd>{createdAtLabel}</dd>
+                  <dt className="text-muted-foreground">Last edited by</dt>
+                  <dd className="truncate">{updatedByLabel}</dd>
+                  <dt className="text-muted-foreground">Last edited at</dt>
+                  <dd>{updatedAtLabel}</dd>
+                </dl>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Created and last-edited metadata.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                {canDelete ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      setShowDeleteConfirm(true);
+                    }}
+                    disabled={isLoading || isDeleting}
+                  >
+                    {isDeleting ? "Deleting..." : "Delete item"}
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-right text-xs text-muted-foreground">{statusLabel}</p>
+            </div>
           </div>
         )}
 
         {errorMessage ? <p className="mt-3 text-sm text-destructive">{errorMessage}</p> : null}
+
+        {showDeleteConfirm ? (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/85 p-4 backdrop-blur-[1px]">
+            <div className="w-full max-w-sm rounded-lg border bg-card p-4 shadow-lg">
+              <h3 className="text-base font-semibold">Delete this item?</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This action cannot be undone.
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    void handleDelete();
+                  }}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete item"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </aside>
     </div>
   );

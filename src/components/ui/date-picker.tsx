@@ -353,6 +353,42 @@ export function DatePicker({
               "& .MuiIconButton-root": {
                 color: "var(--foreground)",
               },
+              "& .MuiPickersCalendarHeader-label": {
+                color: "var(--foreground)",
+              },
+              "& .MuiDayCalendar-weekDayLabel": {
+                color: "var(--muted-foreground)",
+                fontWeight: 500,
+              },
+              "& .MuiPickersDay-root": {
+                color: "var(--foreground)",
+                borderRadius: "0.5rem",
+              },
+              "& .MuiPickersDay-root:not(.Mui-selected)": {
+                backgroundColor: "transparent",
+              },
+              "& .MuiPickersDay-root:not(.Mui-selected):hover": {
+                backgroundColor: "var(--accent)",
+              },
+              "& .MuiPickersDay-root.Mui-selected": {
+                backgroundColor: "var(--primary)",
+                color: "var(--primary-foreground)",
+              },
+              "& .MuiPickersDay-root.Mui-selected:hover": {
+                backgroundColor: "color-mix(in oklab, var(--primary) 88%, black)",
+              },
+              "& .MuiPickersDay-root.Mui-disabled": {
+                color: "color-mix(in oklab, var(--muted-foreground) 75%, transparent)",
+              },
+              "& .MuiPickersMonth-monthButton, & .MuiPickersYear-yearButton": {
+                color: "var(--foreground)",
+                borderColor: "var(--border)",
+              },
+              "& .MuiPickersMonth-monthButton.Mui-selected, & .MuiPickersYear-yearButton.Mui-selected": {
+                backgroundColor: "var(--primary)",
+                color: "var(--primary-foreground)",
+                borderColor: "var(--primary)",
+              },
             },
           },
           textField: {
@@ -369,10 +405,12 @@ export function DatePicker({
                 height: "2rem",
                 minHeight: "2rem",
                 borderRadius: "0.625rem",
-                backgroundColor: highlightControl ? "rgb(254 243 199)" : "transparent",
-                color: highlightControl ? "rgb(120 53 15)" : undefined,
-                "& .MuiSvgIcon-root": {
+                backgroundColor: highlightControl ? "rgb(254 243 199)" : "var(--card)",
+                color: highlightControl ? "rgb(120 53 15)" : "var(--foreground)",
+                "& .MuiSvgIcon-root, & svg": {
                   fontSize: "1rem",
+                  color: "var(--muted-foreground)",
+                  stroke: "currentColor",
                 },
               },
               "& .MuiPickersInputBase-sectionsContainer": {
@@ -381,12 +419,17 @@ export function DatePicker({
                 paddingBottom: 0,
                 alignItems: "center",
               },
+              "& .MuiPickersSectionList-root, & .MuiPickersSectionList-section, & .MuiPickersSectionList-sectionContent, & .MuiPickersInputBase-separator":
+                {
+                  color: highlightControl ? "rgb(120 53 15)" : "var(--foreground)",
+                  WebkitTextFillColor: highlightControl ? "rgb(120 53 15)" : "var(--foreground)",
+                },
               "& .MuiOutlinedInput-notchedOutline, & .MuiPickersOutlinedInput-notchedOutline": {
-                borderColor: highlightControl ? "rgb(245 158 11)" : undefined,
+                borderColor: highlightControl ? "rgb(245 158 11)" : "var(--border)",
               },
               "& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline, & .MuiPickersInputBase-root:hover .MuiPickersOutlinedInput-notchedOutline":
                 {
-                borderColor: highlightControl ? "rgb(217 119 6)" : undefined,
+                borderColor: highlightControl ? "rgb(217 119 6)" : "var(--ring)",
               },
               "& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline, & .MuiPickersInputBase-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline":
                 {
@@ -394,6 +437,8 @@ export function DatePicker({
                 borderWidth: highlightControl ? "1px" : undefined,
               },
               "& .MuiInputBase-input": {
+                color: "var(--foreground)",
+                WebkitTextFillColor: "var(--foreground)",
                 fontSize: "0.875rem",
                 paddingTop: 0,
                 paddingBottom: 0,
@@ -401,6 +446,13 @@ export function DatePicker({
                 paddingRight: "10px",
                 lineHeight: "1.25rem",
               },
+              "& .MuiInputBase-root .MuiIconButton-root, & .MuiPickersInputBase-root .MuiIconButton-root": {
+                color: highlightControl ? "rgb(120 53 15)" : "var(--muted-foreground)",
+              },
+              "& .MuiInputBase-root .MuiIconButton-root:hover, & .MuiPickersInputBase-root .MuiIconButton-root:hover":
+                {
+                  backgroundColor: highlightControl ? "rgb(254 215 170 / 0.45)" : "var(--accent)",
+                },
             },
           },
         }}

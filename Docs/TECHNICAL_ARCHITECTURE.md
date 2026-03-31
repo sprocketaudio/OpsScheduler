@@ -82,10 +82,12 @@ OpsScheduler is a single application with the following components:
 - Prisma ORM
 - Zod for validation
 - `POST /api/items` creation endpoint with strict validation, org-scoped writes, and rate limiting
-- `GET /api/items/:id` detail endpoint for loading item data into the detail panel
+- `GET /api/items/:id` detail endpoint for loading item data into the detail panel, including read-only audit metadata
 - `PATCH /api/items/:id` detail update endpoint for title/customer/notes, assignee, fixed, on_hold, cancelled, and done edits
+- `DELETE /api/items/:id` endpoint for admin-only item deletion scoped to the authenticated user's organization
 - `PATCH /api/items/:id/placement` placement endpoint for drag-and-drop scheduling updates
-- `PATCH /api/users/me/preferences` endpoint for authenticated user profile preferences (date locale and calendar visible window)
+- `PATCH /api/users/me/preferences` endpoint for authenticated user settings preferences (date locale, theme mode, and calendar visible window)
+- `PATCH /api/admin/colour-settings` endpoint for admin-only user/default colour management with reserved-colour blocking
 - Dashboard server load applies organization-scoped carry-forward for unscheduled bucket items from prior weeks into the current week
 
 ---
@@ -107,7 +109,7 @@ OpsScheduler is a single application with the following components:
 - Sign-in allowed only for active users already provisioned in database
 - Session access is revalidated against current user activity status
 - Auth endpoint uses request rate limiting for abuse protection
-- Optional development-only bypass can auto-authenticate an active admin or user via environment switch (disabled in production)
+- Optional development-only bypass can auto-authenticate an active admin or user via environment switch (disabled in production runtime and ignored during production build prerender)
 
 ---
 
@@ -233,6 +235,7 @@ Future options:
   - errors
   - authentication events
   - key actions
+  - structured audit events for sign-in and core work-item mutations (create, update, placement update, delete)
 
 - Logs stored locally or via simple logging system
 - Monitoring kept minimal for MVP

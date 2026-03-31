@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 type DashboardFiltersProps = {
   initialSearch: string;
   myItemsOnly: boolean;
+  showMyItemsButton?: boolean;
 };
 
 function buildHref(pathname: string, searchParams: URLSearchParams): string {
@@ -16,7 +17,7 @@ function buildHref(pathname: string, searchParams: URLSearchParams): string {
   return query ? `${pathname}?${query}` : pathname;
 }
 
-export function DashboardFilters({ initialSearch, myItemsOnly }: DashboardFiltersProps) {
+export function DashboardFilters({ initialSearch, myItemsOnly, showMyItemsButton = true }: DashboardFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -80,24 +81,72 @@ export function DashboardFilters({ initialSearch, myItemsOnly }: DashboardFilter
         value={searchDraft}
         onChange={(event) => setSearchDraft(event.target.value)}
         className={cn(
-          "min-w-[260px] flex-1",
+          "w-full min-w-[180px] sm:w-[22rem] lg:w-[26rem]",
           hasSearchText
             ? "border-amber-400 bg-amber-100/90 text-amber-950 placeholder:text-amber-700/80 focus-visible:ring-amber-400/40"
             : "",
         )}
       />
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleMyItemsToggle}
-        className={cn(
-          isMyItemsOnly
-            ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
-            : "",
-        )}
-      >
-        My Items
-      </Button>
+      {showMyItemsButton ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleMyItemsToggle}
+          className={cn(
+            isMyItemsOnly
+              ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+              : "",
+          )}
+        >
+          My Items
+        </Button>
+      ) : null}
     </>
+  );
+}
+
+type MyItemsFilterButtonProps = {
+  myItemsOnly: boolean;
+};
+
+export function MyItemsFilterButton({ myItemsOnly }: MyItemsFilterButtonProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const isMyItemsOnly = useMemo(() => {
+    const mineParam = searchParams.get("mine");
+    if (mineParam === null) {
+      return myItemsOnly;
+    }
+    return mineParam === "1";
+  }, [myItemsOnly, searchParams]);
+
+  function handleMyItemsToggle() {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (isMyItemsOnly) {
+      nextParams.delete("mine");
+    } else {
+      nextParams.set("mine", "1");
+    }
+
+    router.replace(buildHref(pathname, nextParams), {
+      scroll: false,
+    });
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handleMyItemsToggle}
+      className={cn(
+        isMyItemsOnly
+          ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+          : "",
+      )}
+    >
+      My Items
+    </Button>
   );
 }
