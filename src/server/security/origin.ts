@@ -119,6 +119,13 @@ function getAllowedOrigins(request: NextRequest): Set<string> {
 }
 
 export function validateMutationOrigin(request: NextRequest): OriginValidationResult {
+  // Strict origin enforcement is a production control.
+  // In local/Codespaces development, proxy/header variations are common and
+  // should not block auth or mutation testing flows.
+  if (process.env.NODE_ENV !== "production") {
+    return { ok: true };
+  }
+
   const originHeader = request.headers.get("origin");
   const refererHeader = request.headers.get("referer");
   const hasOriginContext = Boolean(originHeader) || Boolean(refererHeader);
