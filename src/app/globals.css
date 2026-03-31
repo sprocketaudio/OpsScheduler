@@ -127,4 +127,9 @@
   html {
     @apply font-sans;
   }
+  @media (min-width: 1024px) and (max-width: 1720px) {
+    html {
+      zoom: 90%;
+    }
+  }
 }

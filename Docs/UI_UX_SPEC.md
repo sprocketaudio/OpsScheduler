@@ -359,6 +359,7 @@ The UI must feel modern, clean, and responsive without becoming decorative or he
 ### Component and Layout Rules
 
 - Use consistent spacing and alignment throughout
+- Desktop and laptop layouts must feel correctly scaled at 100% browser zoom (users should not need to zoom out to 90% for workable density)
 - Prefer card, panel, and sheet patterns over dense layouts
 - Inputs, buttons, and panels must feel modern but understated
 - Motion and animation must be subtle and only used to improve clarity
