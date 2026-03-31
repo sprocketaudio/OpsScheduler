@@ -127,9 +127,22 @@
   html {
     @apply font-sans;
   }
-  @media (min-width: 1024px) and (max-width: 1720px) {
-    html {
+}
+
+@layer utilities {
+  @media (min-width: 1200px) and (max-width: 1720px) {
+    .page-density-laptop {
       zoom: 90%;
+    }
+  }
+
+  @supports not (zoom: 1) {
+    @media (min-width: 1200px) and (max-width: 1720px) {
+      .page-density-laptop {
+        transform: scale(0.9);
+        transform-origin: top left;
+        width: calc(100% / 0.9);
+      }
     }
   }
 }

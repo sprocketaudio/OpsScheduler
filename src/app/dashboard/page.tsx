@@ -360,15 +360,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   );
 
   return (
-    <main className="min-h-screen">
+    <main className="page-density-laptop min-h-screen">
       <header className="border-b">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-4">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-3 xl:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">OpsScheduler</p>
             <p className="text-sm text-muted-foreground">Signed in as {currentUser.email}</p>
           </div>
 
-          <div className="grid gap-2 2xl:grid-cols-[minmax(0,1fr)_19rem] 2xl:items-center 2xl:gap-4">
+          <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-center xl:gap-4">
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
               <h1 className="text-xl font-semibold">Week commencing {weekLabel}</h1>
               <div className="ml-auto flex min-w-0 items-center justify-end">

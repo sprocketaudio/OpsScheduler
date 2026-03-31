@@ -66,9 +66,9 @@ export default async function SettingsPage() {
       : [];
 
   return (
-    <main className="min-h-screen">
+    <main className="page-density-laptop min-h-screen">
       <header className="border-b">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-4">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 p-3 xl:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">OpsScheduler</p>
             <p className="text-sm text-muted-foreground">Signed in as {currentUser.email}</p>
@@ -84,7 +84,7 @@ export default async function SettingsPage() {
         </div>
       </header>
 
-      <section className="mx-auto w-full max-w-7xl p-4">
+      <section className="mx-auto w-full max-w-7xl p-3 xl:p-4">
         <Card className="mb-4">
           <CardHeader>
             <CardTitle>Display and calendar preferences</CardTitle>

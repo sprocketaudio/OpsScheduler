@@ -360,6 +360,7 @@ The UI must feel modern, clean, and responsive without becoming decorative or he
 
 - Use consistent spacing and alignment throughout
 - Desktop and laptop layouts must feel correctly scaled at 100% browser zoom (users should not need to zoom out to 90% for workable density)
+- Responsive breakpoints must optimize practical laptop resolutions (for example ~1200px to ~1700px viewport widths) so core dashboard content does not require manual browser zoom to fit comfortably
 - Prefer card, panel, and sheet patterns over dense layouts
 - Inputs, buttons, and panels must feel modern but understated
 - Motion and animation must be subtle and only used to improve clarity
