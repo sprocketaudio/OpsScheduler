@@ -12,6 +12,9 @@ type DashboardFiltersProps = {
   showMyItemsButton?: boolean;
 };
 
+const ACTIVE_FILTER_BUTTON_CLASSES =
+  "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200 dark:border-amber-400 dark:bg-amber-500/20 dark:text-amber-100 dark:hover:bg-amber-500/30";
+
 function buildHref(pathname: string, searchParams: URLSearchParams): string {
   const query = searchParams.toString();
   return query ? `${pathname}?${query}` : pathname;
@@ -94,7 +97,7 @@ export function DashboardFilters({ initialSearch, myItemsOnly, showMyItemsButton
           onClick={handleMyItemsToggle}
           className={cn(
             isMyItemsOnly
-              ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+              ? ACTIVE_FILTER_BUTTON_CLASSES
               : "",
           )}
         >
@@ -142,7 +145,7 @@ export function MyItemsFilterButton({ myItemsOnly }: MyItemsFilterButtonProps) {
       onClick={handleMyItemsToggle}
       className={cn(
         isMyItemsOnly
-          ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+          ? ACTIVE_FILTER_BUTTON_CLASSES
           : "",
       )}
     >
