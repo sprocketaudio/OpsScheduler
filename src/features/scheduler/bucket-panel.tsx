@@ -217,7 +217,7 @@ export function BucketPanel({
               >
                 <p className="text-sm font-medium">{item.title}</p>
                 {item.customer ? (
-                  <p className="text-sm text-muted-foreground">Customer: {item.customer}</p>
+                  <p className="text-sm text-muted-foreground">{item.customer}</p>
                 ) : null}
                 {displayColour ? (
                   <div className="mt-2 inline-flex items-center gap-2 text-xs text-muted-foreground">
