@@ -305,6 +305,7 @@ Opening an item displays a panel (side or modal) with:
 - Date picker jump control in the calendar panel to select any date and navigate to that week
 - Hide/show weekend toggle in the calendar panel
 - Calendar and bucket update together
+- The current real-world day column must stay visibly highlighted in both light and dark themes with readable contrast
 - Week/day labels and scheduler tooltip dates use the signed-in user's selected date locale
 - A visual divider should separate Friday from Saturday when weekends are visible
 - When search is active:
