@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Manrope } from "next/font/google";
-import { MuiCacheProvider } from "@/components/providers/mui-cache-provider";
 import { normalizeThemePreference } from "@/features/settings/theme";
 import { getServerAuthSession } from "@/server/auth/session";
 import { prisma } from "@/server/db/client";
@@ -41,9 +40,7 @@ export default async function RootLayout({
       lang="en"
       className={`${manrope.variable} ${geistMono.variable} ${resolvedTheme === "dark" ? "dark" : ""} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <MuiCacheProvider>{children}</MuiCacheProvider>
-      </body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }
