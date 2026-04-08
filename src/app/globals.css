@@ -127,6 +127,33 @@
   html {
     @apply font-sans;
   }
+  html.dark {
+    color-scheme: dark;
+  }
+
+  .dark select,
+  .dark input[type="time"],
+  .dark input[type="date"],
+  .dark input[type="datetime-local"] {
+    color-scheme: dark;
+  }
+
+  .dark select {
+    color: var(--foreground);
+    background-color: var(--card);
+  }
+
+  .dark select option {
+    color: var(--foreground);
+    background-color: var(--popover);
+  }
+
+  .dark input[type="time"]::-webkit-calendar-picker-indicator,
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.1);
+    opacity: 0.9;
+  }
   @media (min-width: 1200px) and (max-width: 1720px) {
     html {
       font-size: 93.75%;
