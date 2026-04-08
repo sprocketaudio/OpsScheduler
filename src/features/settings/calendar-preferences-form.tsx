@@ -88,7 +88,7 @@ export function CalendarPreferencesForm({
           value={dateLocale}
           onChange={(event) => setDateLocale(event.target.value as DateLocale)}
           disabled={isSubmitting}
-          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:[color-scheme:dark] [&_option]:bg-popover [&_option]:text-popover-foreground"
         >
           {DATE_LOCALE_VALUES.map((locale) => (
             <option key={locale} value={locale}>
@@ -107,7 +107,7 @@ export function CalendarPreferencesForm({
           value={uiTheme}
           onChange={(event) => setUiTheme(event.target.value as ThemePreference)}
           disabled={isSubmitting}
-          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:[color-scheme:dark] [&_option]:bg-popover [&_option]:text-popover-foreground"
         >
           {THEME_PREFERENCE_VALUES.map((themeValue) => (
             <option key={themeValue} value={themeValue}>
