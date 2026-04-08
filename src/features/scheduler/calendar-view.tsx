@@ -1161,7 +1161,6 @@ export function SchedulerCalendar({
     }
 
     setInteractionError(null);
-    onItemSelect?.(String(arg.event.id));
     onScheduleSync?.({
       itemId: String(arg.event.id),
       startDate: calendarPlacement.startDate,
@@ -1200,7 +1199,6 @@ export function SchedulerCalendar({
     }
 
     setInteractionError(null);
-    onItemSelect?.(String(arg.event.id));
     onScheduleSync?.({
       itemId: String(arg.event.id),
       startDate: calendarPlacement.startDate,
@@ -1239,7 +1237,6 @@ export function SchedulerCalendar({
     }
 
     setInteractionError(null);
-    onItemSelect?.(String(arg.event.id));
     onScheduleSync?.({
       itemId: String(arg.event.id),
       startDate: calendarPlacement.startDate,
@@ -1326,7 +1323,6 @@ export function SchedulerCalendar({
   function handleEventDragStart(arg: CalendarEventDragStartArg) {
     setHoverTooltip(null);
     setBucketDropZoneActive(true);
-    onItemSelect?.(String(arg.event.id));
   }
 
   async function handleEventDragStop(arg: CalendarEventDragStopArg) {
@@ -1354,7 +1350,6 @@ export function SchedulerCalendar({
     }
 
     setInteractionError(null);
-    onItemSelect?.(eventId);
     onScheduleSync?.({
       itemId: eventId,
       startDate: "",

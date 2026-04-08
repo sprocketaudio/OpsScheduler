@@ -165,7 +165,8 @@ Opening an item displays a panel (side or modal) with:
 - Changes autosave after edits (no explicit save button required)
 - Panel can be closed without navigation
 - Side detail panel is non-modal: the main UI remains visible and interactive while the panel is open
-- Selecting another item by click or drag updates the open panel to that item
+- Selecting another item by click updates the open panel to that item
+- Dragging or resizing items must not open the detail panel
 
 ---
 

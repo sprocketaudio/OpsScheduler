@@ -141,8 +141,6 @@ export function BucketPanel({
   }, [items]);
 
   function handlePointerDown(itemId: string, event: PointerEvent<HTMLDivElement>) {
-    onItemSelect?.(itemId);
-
     pointerStartRef.current = {
       itemId,
       x: event.clientX,
