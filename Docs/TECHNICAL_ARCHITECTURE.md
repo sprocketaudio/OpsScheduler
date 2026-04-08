@@ -284,6 +284,7 @@ Core dependencies:
 - Tailwind CSS
 - @mui/x-date-pickers
 - @mui/material
+- @emotion/cache
 - @emotion/react
 - @emotion/styled
 - date-fns
