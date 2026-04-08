@@ -133,3 +133,21 @@
     }
   }
 }
+
+@layer components {
+  .scheduler-calendar-surface .fc-scrollgrid-section-header .fc-scroller,
+  .scheduler-calendar-surface .fc-scrollgrid-section-all-day .fc-scroller {
+    overflow-y: hidden !important;
+    scrollbar-width: none;
+  }
+
+  .scheduler-calendar-surface .fc-scrollgrid-section-header .fc-scroller::-webkit-scrollbar,
+  .scheduler-calendar-surface .fc-scrollgrid-section-all-day .fc-scroller::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .scheduler-calendar-surface .fc-scrollgrid-section-body .fc-scroller {
+    overflow-y: auto !important;
+  }
+}

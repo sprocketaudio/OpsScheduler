@@ -400,7 +400,7 @@ export function DatePicker({
               highlightControl ? "rounded-lg bg-amber-50 ring-1 ring-amber-400/80" : "",
             ),
             sx: {
-              width: fullWidth ? "100%" : "9.5rem",
+              width: fullWidth ? "100%" : "10.5rem",
               "& .MuiInputBase-root, & .MuiPickersInputBase-root": {
                 height: "2rem",
                 minHeight: "2rem",

@@ -755,9 +755,9 @@ export function ItemDetailPanel({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 maxLength={4000}
-                rows={8}
+                rows={3}
                 disabled={isLoading}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-[4.5rem] w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
@@ -771,7 +771,7 @@ export function ItemDetailPanel({
                   value={assigneeId}
                   onChange={(event) => setAssigneeId(event.target.value)}
                   disabled={isLoading}
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:[color-scheme:dark] [&_option]:bg-popover [&_option]:text-popover-foreground"
                 >
                   <option value="">Unassigned</option>
                   {assignableUsers.map((user) => (
