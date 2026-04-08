@@ -42,6 +42,9 @@ type StatusSyncPayload = {
   onHold: boolean;
 };
 
+const ACTIVE_SEARCH_CONTROL_CLASSES =
+  "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200 dark:border-amber-400 dark:bg-amber-500/20 dark:text-amber-100 dark:hover:bg-amber-500/30";
+
 export function SchedulerWorkspace({
   bucketItems,
   calendarEvents,
@@ -148,7 +151,7 @@ export function SchedulerWorkspace({
                   onClick={() => navigateToWeek(previousWeekIso)}
                   className={cn(
                     searchActive && previousWeekHasSearchMatch
-                      ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+                      ? ACTIVE_SEARCH_CONTROL_CLASSES
                       : "",
                   )}
                 >
@@ -160,7 +163,7 @@ export function SchedulerWorkspace({
                   onClick={() => navigateToWeek(currentWeekIso)}
                   className={cn(
                     searchActive && currentWeekHasSearchMatch
-                      ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+                      ? ACTIVE_SEARCH_CONTROL_CLASSES
                       : "",
                   )}
                 >
@@ -172,7 +175,7 @@ export function SchedulerWorkspace({
                   onClick={() => navigateToWeek(nextWeekIso)}
                   className={cn(
                     searchActive && nextWeekHasSearchMatch
-                      ? "border-amber-500 bg-amber-100 text-amber-950 hover:bg-amber-200"
+                      ? ACTIVE_SEARCH_CONTROL_CLASSES
                       : "",
                   )}
                 >
