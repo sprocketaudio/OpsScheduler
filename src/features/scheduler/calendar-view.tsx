@@ -1242,7 +1242,6 @@ export function SchedulerCalendar({
       endDate: calendarPlacement.endDate ?? "",
       endTime: calendarPlacement.endTime ?? "",
     });
-    router.refresh();
   }
 
   function handleEventDidMount(arg: EventMountArg) {
