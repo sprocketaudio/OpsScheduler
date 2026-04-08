@@ -1168,7 +1168,6 @@ export function SchedulerCalendar({
       endDate: calendarPlacement.endDate ?? "",
       endTime: calendarPlacement.endTime ?? "",
     });
-    router.refresh();
   }
 
   async function handleEventDrop(arg: CalendarEventDropArg) {
@@ -1206,7 +1205,6 @@ export function SchedulerCalendar({
       endDate: calendarPlacement.endDate ?? "",
       endTime: calendarPlacement.endTime ?? "",
     });
-    router.refresh();
   }
 
   async function handleEventResize(arg: CalendarEventResizeArg) {
