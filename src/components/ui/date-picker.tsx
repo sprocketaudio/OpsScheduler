@@ -457,6 +457,17 @@ export function DatePicker({
               "& .MuiInputBase-root .MuiIconButton-root, & .MuiPickersInputBase-root .MuiIconButton-root": {
                 color: highlightControl ? "rgb(120 53 15)" : "var(--muted-foreground)",
               },
+              "& .MuiInputBase-root.Mui-disabled .MuiIconButton-root, & .MuiPickersInputBase-root.Mui-disabled .MuiIconButton-root":
+                {
+                  color: highlightControl ? "rgb(120 53 15)" : "var(--muted-foreground)",
+                  opacity: 1,
+                },
+              "& .MuiInputBase-root.Mui-disabled .MuiSvgIcon-root, & .MuiPickersInputBase-root.Mui-disabled .MuiSvgIcon-root, & .MuiInputBase-root.Mui-disabled svg, & .MuiPickersInputBase-root.Mui-disabled svg":
+                {
+                  color: highlightControl ? "rgb(120 53 15)" : "var(--muted-foreground)",
+                  stroke: "currentColor",
+                  opacity: 1,
+                },
               "& .MuiInputBase-root .MuiIconButton-root:hover, & .MuiPickersInputBase-root .MuiIconButton-root:hover":
                 {
                   backgroundColor: highlightControl ? "rgb(254 215 170 / 0.45)" : "var(--accent)",
