@@ -367,6 +367,14 @@ export function DatePicker({
               "& .MuiPickersDay-root:not(.Mui-selected)": {
                 backgroundColor: "transparent",
               },
+              "& .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected)": {
+                color: "var(--foreground)",
+                border: "1px solid color-mix(in oklab, var(--ring) 88%, white 12%)",
+                backgroundColor: "color-mix(in oklab, var(--accent) 45%, transparent)",
+              },
+              "& .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected):hover": {
+                backgroundColor: "var(--accent)",
+              },
               "& .MuiPickersDay-root:not(.Mui-selected):hover": {
                 backgroundColor: "var(--accent)",
               },
